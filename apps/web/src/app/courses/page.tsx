@@ -83,8 +83,8 @@ async function getCourses(searchParams: URLSearchParams): Promise<Course[]> {
              course.level === 'INTERMEDIATE' ? '중급' : '고급',
       instructor: {
         user: {
-          name: course.instructor_profiles?.user?.name || '알 수 없음',
-          avatar: course.instructor_profiles?.user?.avatar,
+          name: (course as any).instructor_profiles?.user?.name || '알 수 없음',
+          avatar: (course as any).instructor_profiles?.user?.avatar,
         }
       }
     })) || []
