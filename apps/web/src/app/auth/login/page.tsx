@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -22,28 +22,24 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      // Supabase 로그인
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       })
 
-      const data = await response.json()
-
-      if (response.ok) {
-        // 토큰을 localStorage에 저장 (실제 환경에서는 HttpOnly 쿠키 사용 권장)
-        localStorage.setItem('accessToken', data.accessToken)
-        localStorage.setItem('refreshToken', data.refreshToken)
-        localStorage.setItem('user', JSON.stringify(data.user))
-        
-        router.push('/')
-      } else {
-        setError(data.message || '로그인에 실패했습니다.')
+      if (signInError) {
+        setError(signInError.message === 'Invalid login credentials' 
+          ? '이메일 또는 비밀번호가 올바르지 않습니다.' 
+          : signInError.message)
+        return
       }
+
+      // 로그인 성공
+      router.push('/')
+      router.refresh()
     } catch (err) {
-      setError('서버 연결에 실패했습니다.')
+      setError('로그인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
@@ -159,7 +155,7 @@ export default function LoginPage() {
               className="btn-primary w-full justify-center py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <div className="flex items-center">
+                <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   로그인 중...
                 </div>

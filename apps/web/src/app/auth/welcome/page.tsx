@@ -3,15 +3,29 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/solid'
+import { supabase } from '@/lib/supabase'
 
 export default function WelcomePage() {
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      setUser(JSON.parse(userData))
+    const getUser = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authUser.id)
+          .single()
+        
+        setUser({
+          ...authUser,
+          ...profile,
+          userType: authUser.user_metadata?.user_type || 'TRAINER'
+        })
+      }
     }
+    getUser()
   }, [])
 
   const getUserTypeLabel = (userType: string) => {

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { MagnifyingGlassIcon, UserIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { supabase } from '@/lib/supabase'
 
 const navigation = [
   { name: '트레이너 교육', href: '/courses/trainer' },
@@ -14,7 +15,59 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { data: session, status } = useSession()
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    // 현재 사용자 세션 확인
+    const checkUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          // 사용자 프로필 정보 가져오기
+          const { data: profile } = await supabase
+            .from('users')
+            .select('name, avatar')
+            .eq('id', user.id)
+            .single()
+          
+          setUser({
+            ...user,
+            name: profile?.name || user.email?.split('@')[0],
+            avatar: profile?.avatar
+          })
+        }
+      } catch (error) {
+        console.error('Error checking user:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkUser()
+
+    // 인증 상태 변경 리스너
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        checkUser()
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      router.push('/')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-100">
@@ -71,9 +124,9 @@ export function Header() {
 
         {/* 사용자 메뉴 */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-4">
-          {status === 'loading' ? (
+          {loading ? (
             <div className="h-8 w-20 bg-gray-200 rounded animate-pulse" />
-          ) : session ? (
+          ) : user ? (
             <div className="flex items-center gap-x-4">
               <Link
                 href="/my/courses"
@@ -81,18 +134,24 @@ export function Header() {
               >
                 내 강의
               </Link>
+              <Link
+                href="/my/orders"
+                className="text-sm font-medium text-gray-700 hover:text-primary-600"
+              >
+                주문내역
+              </Link>
               <div className="relative group">
                 <button className="flex items-center gap-x-2 text-sm font-medium text-gray-700 hover:text-primary-600">
-                  {session.user?.image ? (
+                  {user.avatar ? (
                     <img
-                      src={session.user.image}
+                      src={user.avatar}
                       alt="프로필"
                       className="h-8 w-8 rounded-full"
                     />
                   ) : (
                     <UserIcon className="h-8 w-8 p-1 bg-gray-100 rounded-full" />
                   )}
-                  <span>{session.user?.name}</span>
+                  <span>{user.name}</span>
                 </button>
                 
                 {/* 드롭다운 메뉴 */}
@@ -111,6 +170,12 @@ export function Header() {
                       수강 관리
                     </Link>
                     <Link
+                      href="/my/orders"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      주문 내역
+                    </Link>
+                    <Link
                       href="/my/certificates"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
@@ -118,7 +183,7 @@ export function Header() {
                     </Link>
                     <hr className="my-1" />
                     <button
-                      onClick={() => signOut()}
+                      onClick={handleSignOut}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       로그아웃
@@ -185,7 +250,7 @@ export function Header() {
                   ))}
                 </div>
                 <div className="py-6">
-                  {session ? (
+                  {user ? (
                     <div className="space-y-2">
                       <Link
                         href="/my/courses"
@@ -193,8 +258,14 @@ export function Header() {
                       >
                         내 강의
                       </Link>
+                      <Link
+                        href="/my/orders"
+                        className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
+                      >
+                        주문 내역
+                      </Link>
                       <button
-                        onClick={() => signOut()}
+                        onClick={handleSignOut}
                         className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 w-full text-left"
                       >
                         로그아웃

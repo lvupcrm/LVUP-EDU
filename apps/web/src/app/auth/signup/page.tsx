@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { EyeIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { supabase } from '@/lib/supabase'
 
 const userTypes = [
   { value: 'TRAINER', label: '트레이너', description: '피트니스 전문 지식과 기술을 배우고 싶어요' },
@@ -69,35 +70,53 @@ export default function SignUpPage() {
       setError('')
 
       try {
-        const response = await fetch('http://localhost:8000/api/v1/auth/signup', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: formData.email,
-            password: formData.password,
-            name: formData.name,
-            userType: formData.userType,
-            nickname: formData.nickname || undefined,
-            phone: formData.phone || undefined,
-          }),
+        // 1. Supabase Auth 회원가입
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name,
+              user_type: formData.userType,
+            }
+          }
         })
 
-        const data = await response.json()
+        if (authError) {
+          if (authError.message.includes('already registered')) {
+            setError('이미 가입된 이메일입니다.')
+          } else {
+            setError(authError.message)
+          }
+          return
+        }
 
-        if (response.ok) {
-          // 토큰을 localStorage에 저장
-          localStorage.setItem('accessToken', data.accessToken)
-          localStorage.setItem('refreshToken', data.refreshToken)
-          localStorage.setItem('user', JSON.stringify(data.user))
-          
+        if (authData.user) {
+          // 2. users 테이블에 추가 정보 저장
+          const { error: profileError } = await supabase
+            .from('users')
+            .insert({
+              id: authData.user.id,
+              email: formData.email,
+              name: formData.name,
+              role: 'STUDENT', // 기본 역할
+              nickname: formData.nickname || null,
+              phone: formData.phone || null,
+              agreed_to_marketing: formData.agreedToMarketing,
+            })
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError)
+            // Auth 사용자는 생성되었지만 프로필은 실패한 경우
+            // 나중에 프로필을 다시 생성할 수 있도록 로그인 페이지로 이동
+          }
+
+          // 회원가입 성공
           router.push('/auth/welcome')
-        } else {
-          setError(data.message || '회원가입에 실패했습니다.')
         }
       } catch (err) {
-        setError('서버 연결에 실패했습니다.')
+        console.error('Signup error:', err)
+        setError('회원가입 중 오류가 발생했습니다.')
       } finally {
         setLoading(false)
       }
@@ -385,7 +404,7 @@ export default function SignUpPage() {
                   className="btn-primary flex-1 justify-center py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       가입 중...
                     </div>
