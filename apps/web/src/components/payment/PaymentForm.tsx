@@ -102,7 +102,7 @@ export default function PaymentForm({ course, user, orderId }: PaymentFormProps)
                   name="paymentMethod"
                   value={method.id}
                   checked={selectedMethod === method.id}
-                  onChange={(e) => setSelectedMethod(e.target.value)}
+                  onChange={(e) => setSelectedMethod(e.target.value as PaymentMethod)}
                   className="sr-only"
                 />
                 <IconComponent className="h-6 w-6 text-gray-400 mr-3" />
