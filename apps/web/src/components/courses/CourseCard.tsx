@@ -10,21 +10,19 @@ interface CourseCardProps {
     id: string
     title: string
     description: string
-    thumbnail: string
-    category: string
-    level: string
-    duration: number
+    thumbnail?: string
     price: number
-    isPaid: boolean
-    rating: number
+    is_free: boolean
+    level: string
+    enrollment_count: number
+    average_rating: number
+    review_count?: number
+    duration?: number
     instructor: {
-      id: string
-      name: string
-      avatar: string
-    }
-    _count: {
-      enrollments: number
-      reviews: number
+      user: {
+        name: string
+        avatar?: string
+      }
     }
   }
 }
@@ -56,17 +54,6 @@ export default function CourseCard({ course }: CourseCardProps) {
     }
   }
 
-  const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      '기초 지식': 'bg-blue-100 text-blue-800',
-      '전문 기술': 'bg-purple-100 text-purple-800',
-      '자격증': 'bg-indigo-100 text-indigo-800',
-      '경영 관리': 'bg-orange-100 text-orange-800',
-      '마케팅': 'bg-pink-100 text-pink-800',
-      '창업': 'bg-emerald-100 text-emerald-800',
-    }
-    return colors[category] || 'bg-gray-100 text-gray-800'
-  }
 
   const renderStars = (rating: number) => {
     const stars = []
@@ -116,20 +103,14 @@ export default function CourseCard({ course }: CourseCardProps) {
           {/* Course Type Badge */}
           <div className="absolute top-3 left-3">
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-              course.isPaid 
+              !course.is_free 
                 ? 'bg-primary-100 text-primary-700' 
                 : 'bg-green-100 text-green-700'
             }`}>
-              {course.isPaid ? '유료' : '무료'}
+              {!course.is_free ? '유료' : '무료'}
             </span>
           </div>
 
-          {/* Category */}
-          <div className="absolute top-3 right-3">
-            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(course.category)}`}>
-              {course.category}
-            </span>
-          </div>
         </div>
 
         {/* Content */}
@@ -154,23 +135,23 @@ export default function CourseCard({ course }: CourseCardProps) {
           {/* Instructor */}
           <div className="flex items-center mb-4">
             <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-fitness-500 rounded-full flex items-center justify-center mr-3">
-              {course.instructor.avatar ? (
+              {course.instructor.user.avatar ? (
                 <Image
-                  src={course.instructor.avatar}
-                  alt={course.instructor.name}
+                  src={course.instructor.user.avatar}
+                  alt={course.instructor.user.name}
                   width={32}
                   height={32}
                   className="rounded-full"
                 />
               ) : (
                 <span className="text-white text-sm font-medium">
-                  {course.instructor.name.charAt(0)}
+                  {course.instructor.user.name.charAt(0)}
                 </span>
               )}
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">
-                {course.instructor.name}
+                {course.instructor.user.name}
               </p>
             </div>
           </div>
@@ -178,13 +159,15 @@ export default function CourseCard({ course }: CourseCardProps) {
           {/* Stats */}
           <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <ClockIcon className="h-4 w-4 mr-1" />
-                {formatDuration(course.duration)}
-              </div>
+              {course.duration && (
+                <div className="flex items-center">
+                  <ClockIcon className="h-4 w-4 mr-1" />
+                  {formatDuration(course.duration)}
+                </div>
+              )}
               <div className="flex items-center">
                 <UserGroupIcon className="h-4 w-4 mr-1" />
-                {course._count.enrollments}명
+                {course.enrollment_count}명
               </div>
             </div>
           </div>
@@ -193,19 +176,21 @@ export default function CourseCard({ course }: CourseCardProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="flex items-center mr-2">
-                {renderStars(course.rating)}
+                {renderStars(course.average_rating)}
               </div>
               <span className="text-sm font-medium text-gray-900">
-                {course.rating.toFixed(1)}
+                {course.average_rating.toFixed(1)}
               </span>
-              <span className="text-sm text-gray-500 ml-1">
-                ({course._count.reviews})
-              </span>
+              {course.review_count !== undefined && (
+                <span className="text-sm text-gray-500 ml-1">
+                  ({course.review_count})
+                </span>
+              )}
             </div>
 
             {/* Price */}
             <div className="text-right">
-              {course.isPaid ? (
+              {!course.is_free ? (
                 <div>
                   <span className="text-lg font-bold text-gray-900">
                     {formatPrice(course.price)}원
