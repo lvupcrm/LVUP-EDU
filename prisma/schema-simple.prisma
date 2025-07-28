@@ -1,0 +1,458 @@
+// SQLite용 간단한 스키마
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ================================
+// 사용자 관리
+// ================================
+
+model User {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  password          String?
+  name              String
+  nickname          String?    @unique
+  phone             String?
+  avatar            String?
+  role              String     @default("STUDENT") // STUDENT, INSTRUCTOR, ADMIN
+  userType          String     @default("TRAINER") // TRAINER, OPERATOR
+  status            String     @default("ACTIVE")  // ACTIVE, INACTIVE
+  
+  // 프로필 정보
+  introduction      String?
+  experience        Int?       // 경력 (년)
+  location          String?    // 지역
+  specialties       String?    // JSON string으로 저장
+  certifications    String?    // JSON string으로 저장
+  
+  // 소셜 로그인
+  providerId        String?
+  
+  // 타임스탬프
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  lastLoginAt       DateTime?
+  emailVerifiedAt   DateTime?
+  
+  // 관계
+  profile           UserProfile?
+  enrollments       Enrollment[]
+  instructorProfile InstructorProfile?
+  reviews           Review[]
+  progress          Progress[]
+  notifications     Notification[]
+  payments          Payment[]
+  certificates      Certificate[]
+  watchLater        WatchLater[]
+  
+  @@map("users")
+}
+
+model UserProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  
+  // 추가 프로필 정보
+  birthDate    DateTime?
+  gender       String?
+  occupation   String?
+  company      String?
+  website      String?
+  
+  // 알림 설정
+  emailNotifications     Boolean @default(true)
+  pushNotifications      Boolean @default(true)
+  marketingNotifications Boolean @default(false)
+  
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_profiles")
+}
+
+// ================================
+// 강사 관리
+// ================================
+
+model InstructorProfile {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  status           String           @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  // 강사 정보
+  title            String?          // 직책/타이틀
+  bio              String?          // 소개
+  expertise        String?          // JSON array로 저장
+  achievements     String?          // JSON array로 저장
+  educations       String?          // JSON array로 저장
+  
+  // 자격 증명
+  certificationDocs String?         // JSON array로 저장
+  resumeDoc        String?          // 이력서
+  portfolioDoc     String?          // 포트폴리오
+  
+  // 통계
+  totalStudents    Int              @default(0)
+  totalCourses     Int              @default(0)
+  averageRating    Float            @default(0)
+  totalRevenue     Int              @default(0)
+  
+  // 승인 관련
+  approvedAt       DateTime?
+  approvedBy       String?
+  rejectionReason  String?
+  
+  // 타임스탬프
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  
+  // 관계
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courses          Course[]
+  
+  @@map("instructor_profiles")
+}
+
+// ================================
+// 카테고리 및 강의
+// ================================
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String?
+  type        String       // TRAINER, OPERATOR
+  icon        String?
+  color       String?
+  order       Int          @default(0)
+  isActive    Boolean      @default(true)
+  
+  // 관계
+  parent      Category?    @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  parentId    String?
+  children    Category[]   @relation("CategoryHierarchy")
+  courses     Course[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@map("categories")
+}
+
+model Course {
+  id              String        @id @default(cuid())
+  title           String
+  slug            String        @unique
+  description     String
+  shortDescription String?
+  
+  // 강의 메타데이터
+  status          String        @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  level           String        @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  type            String        @default("VIDEO") // VIDEO, LIVE, WORKSHOP
+  duration        Int?          // 총 시간 (분)
+  language        String        @default("ko")
+  
+  // 가격 정보
+  price           Int           @default(0) // 원 단위
+  originalPrice   Int?          // 정가
+  discountRate    Int?          // 할인율 (%)
+  isFree          Boolean       @default(false)
+  
+  // 미디어
+  thumbnail       String?
+  previewVideo    String?
+  images          String?       // JSON array로 저장
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  keywords        String?       // JSON array로 저장
+  
+  // 통계
+  enrollmentCount Int           @default(0)
+  viewCount       Int           @default(0)
+  averageRating   Float         @default(0)
+  reviewCount     Int           @default(0)
+  
+  // 설정
+  isPublic        Boolean       @default(true)
+  allowPreview    Boolean       @default(true)
+  certificateEnabled Boolean    @default(false)
+  
+  // 타임스탬프
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // 관계
+  instructor      InstructorProfile @relation(fields: [instructorId], references: [id])
+  instructorId    String
+  category        Category      @relation(fields: [categoryId], references: [id])
+  categoryId      String
+  
+  lessons         Lesson[]
+  enrollments     Enrollment[]
+  reviews         Review[]
+  progress        Progress[]
+  watchLater      WatchLater[]
+  
+  @@map("courses")
+}
+
+// ================================
+// 강의 내용
+// ================================
+
+model Lesson {
+  id              String      @id @default(cuid())
+  title           String
+  description     String?
+  type            String      @default("VIDEO") // VIDEO, TEXT, QUIZ
+  order           Int
+  duration        Int?        // 분 단위
+  
+  // 컨텐츠
+  videoUrl        String?
+  textContent     String?
+  fileUrl         String?
+  thumbnailUrl    String?
+  
+  // 설정
+  isPreview       Boolean     @default(false)
+  isRequired      Boolean     @default(true)
+  
+  // 타임스탬프
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // 관계
+  course          Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId        String
+  progress        Progress[]
+  
+  @@map("lessons")
+}
+
+// ================================
+// 수강 및 진도
+// ================================
+
+model Enrollment {
+  id              String           @id @default(cuid())
+  status          String           @default("ACTIVE") // ACTIVE, COMPLETED, EXPIRED
+  progress        Float            @default(0) // 0-100%
+  completedAt     DateTime?
+  expiresAt       DateTime?
+  
+  // 타임스탬프
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // 관계
+  user            User             @relation(fields: [userId], references: [id])
+  userId          String
+  course          Course           @relation(fields: [courseId], references: [id])
+  courseId        String
+  payment         Payment?         @relation(fields: [paymentId], references: [id])
+  paymentId       String?
+  
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Progress {
+  id              String    @id @default(cuid())
+  watchedDuration Int       @default(0) // 시청한 시간 (초)
+  totalDuration   Int?      // 총 시간 (초)
+  isCompleted     Boolean   @default(false)
+  completedAt     DateTime?
+  lastWatchedAt   DateTime?
+  
+  // 타임스탬프
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // 관계
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+  course          Course    @relation(fields: [courseId], references: [id])
+  courseId        String
+  lesson          Lesson    @relation(fields: [lessonId], references: [id])
+  lessonId        String
+  
+  @@unique([userId, courseId, lessonId])
+  @@map("progress")
+}
+
+// ================================
+// 결제 시스템
+// ================================
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  amount          Int           // 결제 금액
+  currency        String        @default("KRW")
+  status          String        @default("PENDING") // PENDING, COMPLETED, FAILED
+  method          String        // CARD, BANK_TRANSFER, etc.
+  
+  // 결제 상세
+  pgProvider      String?       // PG사
+  pgTransactionId String?       // PG 거래번호
+  receiptUrl      String?       // 결제 영수증
+  
+  // 환불 정보
+  refundAmount    Int?
+  refundReason    String?
+  refundedAt      DateTime?
+  
+  // 타임스탬프
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // 관계
+  user            User          @relation(fields: [userId], references: [id])
+  userId          String
+  enrollments     Enrollment[]
+  
+  @@map("payments")
+}
+
+// ================================
+// 리뷰 시스템
+// ================================
+
+model Review {
+  id              String    @id @default(cuid())
+  rating          Int       // 1-5 별점
+  title           String?
+  content         String
+  isPublic        Boolean   @default(true)
+  isVerified      Boolean   @default(false) // 구매 인증
+  
+  // 도움 여부
+  helpfulCount    Int       @default(0)
+  reportCount     Int       @default(0)
+  
+  // 타임스탬프
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // 관계
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+  course          Course    @relation(fields: [courseId], references: [id])
+  courseId        String
+  
+  @@unique([userId, courseId])
+  @@map("reviews")
+}
+
+// ================================
+// 자격증 시스템
+// ================================
+
+model Certificate {
+  id              String            @id @default(cuid())
+  certificateNumber String          @unique
+  title           String
+  description     String?
+  status          String            @default("PENDING") // PENDING, ISSUED, REVOKED
+  
+  // 자격증 정보
+  issuerName      String            @default("LVUP EDU")
+  issuerLogo      String?
+  templateUrl     String?
+  certificateUrl  String?
+  
+  // 검증 정보
+  verificationCode String           @unique
+  expiresAt       DateTime?
+  
+  // 타임스탬프
+  issuedAt        DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  // 관계
+  user            User              @relation(fields: [userId], references: [id])
+  userId          String
+  course          Course?           @relation(fields: [courseId], references: [id])
+  courseId        String?
+  
+  @@map("certificates")
+}
+
+// ================================
+// 알림 시스템
+// ================================
+
+model Notification {
+  id              String             @id @default(cuid())
+  type            String             // COURSE_UPDATE, NEW_LESSON, etc.
+  status          String             @default("UNREAD") // UNREAD, READ
+  title           String
+  message         String
+  data            String?            // JSON string으로 저장
+  
+  // 링크 정보
+  actionUrl       String?
+  actionText      String?
+  
+  // 타임스탬프
+  readAt          DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  // 관계
+  user            User               @relation(fields: [userId], references: [id])
+  userId          String
+  
+  @@map("notifications")
+}
+
+// ================================
+// 위시리스트/나중에 보기
+// ================================
+
+model WatchLater {
+  id              String    @id @default(cuid())
+  
+  // 타임스탬프
+  createdAt       DateTime  @default(now())
+  
+  // 관계
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+  course          Course    @relation(fields: [courseId], references: [id])
+  courseId        String
+  
+  @@unique([userId, courseId])
+  @@map("watch_later")
+}
+
+// ================================
+// 시스템 설정
+// ================================
+
+model SystemConfig {
+  id              String    @id @default(cuid())
+  key             String    @unique
+  value           String
+  description     String?
+  isPublic        Boolean   @default(false)
+  
+  // 타임스탬프
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("system_configs")
+}

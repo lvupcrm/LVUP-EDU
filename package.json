@@ -1,0 +1,43 @@
+{
+  "name": "lvup-edu",
+  "version": "0.1.0",
+  "description": "피트니스 종합 교육 플랫폼",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "prisma": "^5.7.0",
+    "tsx": "^4.6.0",
+    "turbo": "^1.11.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^2.4.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
