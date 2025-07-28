@@ -17,6 +17,7 @@
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.52.1",
+    "@tosspayments/payment-sdk": "^1.9.1",
     "axios": "^1.6.2",
     "framer-motion": "^10.16.16",
     "next": "14.0.4",
