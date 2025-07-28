@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getTossPayments, PaymentRequest, formatPrice } from '@/lib/toss-payments'
+import { getTossPayments, PaymentRequest, formatPrice, PaymentMethod } from '@/lib/toss-payments'
 import { CreditCardIcon, BanknotesIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline'
 
 interface PaymentFormProps {
@@ -20,11 +20,11 @@ interface PaymentFormProps {
 }
 
 export default function PaymentForm({ course, user, orderId }: PaymentFormProps) {
-  const [selectedMethod, setSelectedMethod] = useState<string>('카드')
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('카드')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const paymentMethods = [
+  const paymentMethods: { id: PaymentMethod; name: string; icon: any; description: string }[] = [
     { id: '카드', name: '신용/체크카드', icon: CreditCardIcon, description: '간편하고 빠른 카드 결제' },
     { id: '가상계좌', name: '가상계좌', icon: BanknotesIcon, description: '가상계좌로 안전한 입금' },
     { id: '간편결제', name: '간편결제', icon: DevicePhoneMobileIcon, description: '토스, 페이팔 등 간편결제' },
@@ -50,7 +50,7 @@ export default function PaymentForm({ course, user, orderId }: PaymentFormProps)
       }
 
       // 3. 결제 요청
-      await tossPayments.requestPayment(selectedMethod, paymentData)
+      await tossPayments.requestPayment(selectedMethod as any, paymentData)
 
     } catch (error: any) {
       console.error('Payment error:', error)
