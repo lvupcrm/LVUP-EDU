@@ -2,17 +2,19 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { MapPinIcon, AcademicCapIcon, ClockIcon } from '@heroicons/react/24/outline'
 
+interface User {
+  id: string
+  name: string
+  avatar?: string
+  specialties?: string[]
+  location?: string
+}
+
 interface Instructor {
   id: string
   bio?: string
   experience_years?: number
-  users?: {
-    id: string
-    name: string
-    avatar?: string
-    specialties?: string[]
-    location?: string
-  }
+  users?: User
   courseCount?: number
 }
 
@@ -23,7 +25,8 @@ async function getInstructors(): Promise<Instructor[]> {
       id,
       bio,
       experience_years,
-      users!instructor_profiles_user_id_fkey (
+      user_id,
+      users (
         id,
         name,
         avatar,
@@ -48,8 +51,14 @@ async function getInstructors(): Promise<Instructor[]> {
         .select('*', { count: 'exact', head: true })
         .eq('instructor_id', instructor.id)
       
+      // users가 배열로 반환되는 경우를 처리
+      const user = Array.isArray(instructor.users) ? instructor.users[0] : instructor.users
+      
       instructorsWithCount.push({
-        ...instructor,
+        id: instructor.id,
+        bio: instructor.bio,
+        experience_years: instructor.experience_years,
+        users: user,
         courseCount: count || 0
       })
     }
