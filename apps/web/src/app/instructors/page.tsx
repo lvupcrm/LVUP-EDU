@@ -13,10 +13,10 @@ interface Instructor {
     specialties?: string[]
     location?: string
   }
-  courses?: any[]
+  courseCount?: number
 }
 
-async function getInstructors() {
+async function getInstructors(): Promise<Instructor[]> {
   const { data: instructors, error } = await supabase
     .from('instructor_profiles')
     .select(`
@@ -39,6 +39,8 @@ async function getInstructors() {
   }
 
   // 강의 수 계산
+  const instructorsWithCount: Instructor[] = []
+  
   if (instructors) {
     for (const instructor of instructors) {
       const { count } = await supabase
@@ -46,11 +48,14 @@ async function getInstructors() {
         .select('*', { count: 'exact', head: true })
         .eq('instructor_id', instructor.id)
       
-      instructor.courseCount = count || 0
+      instructorsWithCount.push({
+        ...instructor,
+        courseCount: count || 0
+      })
     }
   }
 
-  return instructors || []
+  return instructorsWithCount
 }
 
 export default async function InstructorsPage() {
@@ -67,7 +72,7 @@ export default async function InstructorsPage() {
 
         {/* 강사 목록 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {instructors.map((instructor: any) => (
+          {instructors.map((instructor) => (
             <Link
               key={instructor.id}
               href={`/instructor/${instructor.id}`}
