@@ -9,7 +9,7 @@ interface Course {
   thumbnail?: string
   price: number
   is_free: boolean
-  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+  level: string
   enrollment_count: number
   average_rating: number
   instructor: {
