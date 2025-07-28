@@ -91,6 +91,24 @@ export default async function PaymentPage({ params, searchParams }: PaymentPageP
 
   const { course, user } = result
 
+  // 타입 안전성을 위한 체크
+  if (!course || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">결제 정보 오류</h1>
+          <p className="text-gray-600 mb-6">강의 또는 사용자 정보를 불러올 수 없습니다.</p>
+          <a
+            href={`/courses/${courseId}`}
+            className="btn-primary"
+          >
+            강의로 돌아가기
+          </a>
+        </div>
+      </div>
+    )
+  }
+
   // 주문 ID 생성 (실제로는 API를 통해 주문을 먼저 생성해야 함)
   const orderId = `LVUP-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
 
