@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd ../.. && npm run build --workspace=apps/web",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": true
+  }
+}
