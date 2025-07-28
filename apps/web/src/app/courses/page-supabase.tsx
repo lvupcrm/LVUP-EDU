@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import CourseCard from '@/components/courses/CourseCard'
-import CourseFilter from '@/components/courses/CourseFilter'
+import CourseFilterSimple from '@/components/courses/CourseFilterSimple'
 
 interface Course {
   id: string
@@ -124,7 +124,7 @@ export default async function CoursesPage({
         <div className="flex flex-col lg:flex-row gap-8">
           {/* 필터 사이드바 */}
           <div className="lg:w-64 flex-shrink-0">
-            <CourseFilter />
+            <CourseFilterSimple />
           </div>
 
           {/* 강의 목록 */}
