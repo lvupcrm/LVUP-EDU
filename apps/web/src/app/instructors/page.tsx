@@ -2,6 +2,20 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { MapPinIcon, AcademicCapIcon, ClockIcon } from '@heroicons/react/24/outline'
 
+interface Instructor {
+  id: string
+  bio?: string
+  experience_years?: number
+  users?: {
+    id: string
+    name: string
+    avatar?: string
+    specialties?: string[]
+    location?: string
+  }
+  courses?: any[]
+}
+
 async function getInstructors() {
   const { data: instructors, error } = await supabase
     .from('instructor_profiles')
@@ -9,20 +23,31 @@ async function getInstructors() {
       id,
       bio,
       experience_years,
-      user:users (
+      users!instructor_profiles_user_id_fkey (
         id,
         name,
         avatar,
         specialties,
         location
-      ),
-      _count:courses(count)
+      )
     `)
     .order('experience_years', { ascending: false })
 
   if (error) {
     console.error('Error fetching instructors:', error)
     return []
+  }
+
+  // 강의 수 계산
+  if (instructors) {
+    for (const instructor of instructors) {
+      const { count } = await supabase
+        .from('courses')
+        .select('*', { count: 'exact', head: true })
+        .eq('instructor_id', instructor.id)
+      
+      instructor.courseCount = count || 0
+    }
   }
 
   return instructors || []
@@ -42,7 +67,7 @@ export default async function InstructorsPage() {
 
         {/* 강사 목록 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {instructors.map((instructor) => (
+          {instructors.map((instructor: any) => (
             <Link
               key={instructor.id}
               href={`/instructor/${instructor.id}`}
@@ -51,31 +76,31 @@ export default async function InstructorsPage() {
               <div className="p-6">
                 {/* 프로필 이미지 */}
                 <div className="flex items-center mb-4">
-                  {instructor.user?.avatar ? (
+                  {instructor.users?.avatar ? (
                     <img
-                      src={instructor.user.avatar}
-                      alt={instructor.user.name}
+                      src={instructor.users.avatar}
+                      alt={instructor.users.name}
                       className="w-20 h-20 rounded-full object-cover"
                     />
                   ) : (
                     <div className="w-20 h-20 rounded-full bg-gradient-to-r from-primary-500 to-fitness-500 flex items-center justify-center">
                       <span className="text-white text-2xl font-bold">
-                        {instructor.user?.name?.charAt(0) || 'I'}
+                        {instructor.users?.name?.charAt(0) || 'I'}
                       </span>
                     </div>
                   )}
                   <div className="ml-4 flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                      {instructor.user?.name}
+                      {instructor.users?.name}
                     </h3>
                     <p className="text-sm text-gray-600">피트니스 전문가</p>
                   </div>
                 </div>
 
                 {/* 전문 분야 태그 */}
-                {instructor.user?.specialties && instructor.user.specialties.length > 0 && (
+                {instructor.users?.specialties && instructor.users.specialties.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {instructor.user.specialties.slice(0, 3).map((specialty, index) => (
+                    {instructor.users.specialties.slice(0, 3).map((specialty: string, index: number) => (
                       <span
                         key={index}
                         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
@@ -83,9 +108,9 @@ export default async function InstructorsPage() {
                         {specialty}
                       </span>
                     ))}
-                    {instructor.user.specialties.length > 3 && (
+                    {instructor.users.specialties.length > 3 && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                        +{instructor.user.specialties.length - 3}
+                        +{instructor.users.specialties.length - 3}
                       </span>
                     )}
                   </div>
@@ -93,10 +118,10 @@ export default async function InstructorsPage() {
 
                 {/* 정보 */}
                 <div className="space-y-2 text-sm text-gray-600">
-                  {instructor.user?.location && (
+                  {instructor.users?.location && (
                     <div className="flex items-center">
                       <MapPinIcon className="h-4 w-4 mr-2 text-gray-400" />
-                      <span>{instructor.user.location}</span>
+                      <span>{instructor.users.location}</span>
                     </div>
                   )}
                   <div className="flex items-center">
@@ -105,7 +130,7 @@ export default async function InstructorsPage() {
                   </div>
                   <div className="flex items-center">
                     <AcademicCapIcon className="h-4 w-4 mr-2 text-gray-400" />
-                    <span>{instructor._count || 0}개 강의</span>
+                    <span>{instructor.courseCount || 0}개 강의</span>
                   </div>
                 </div>
 
