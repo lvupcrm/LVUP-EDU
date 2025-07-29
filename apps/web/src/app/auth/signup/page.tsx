@@ -87,8 +87,17 @@ export default function SignUpPage() {
           return;
         }
 
+        console.log('Starting signup process for:', formData.email);
+        
         // 1. 안전한 Supabase Auth 회원가입
         const signUpResult = await safeSupabaseOperation(async (client) => {
+          console.log('Calling signUp with:', {
+            email: formData.email,
+            passwordLength: formData.password.length,
+            name: formData.name,
+            userType: formData.userType
+          });
+
           const { data: authData, error: authError } = await client.auth.signUp({
             email: formData.email,
             password: formData.password,
@@ -100,12 +109,28 @@ export default function SignUpPage() {
             },
           });
 
+          console.log('SignUp response:', {
+            hasData: !!authData,
+            hasUser: !!authData?.user,
+            hasSession: !!authData?.session,
+            userEmail: authData?.user?.email,
+            userConfirmed: authData?.user?.email_confirmed_at,
+            error: authError,
+            errorMessage: authError?.message,
+            errorStatus: authError?.status
+          });
+
           if (authError) {
+            console.error('SignUp error details:', authError);
             if (authError.message.includes('already registered')) {
               throw new Error('이미 가입된 이메일입니다.');
             } else if (authError.message.includes('Invalid email')) {
               throw new Error('올바른 이메일 주소를 입력해주세요.');
             } else if (authError.message.includes('Password should be at least')) {
+              throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
+            } else if (authError.message.includes('Unable to validate email address')) {
+              throw new Error('이메일 주소 형식이 올바르지 않습니다.');
+            } else if (authError.message.includes('Password should be at least 6 characters')) {
               throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
             } else {
               throw new Error(`회원가입 실패: ${authError.message}`);
@@ -115,6 +140,14 @@ export default function SignUpPage() {
           return authData;
         });
 
+        console.log('Final signUpResult:', signUpResult);
+
+        if (signUpResult === null) {
+          console.error('safeSupabaseOperation returned null for signup');
+          setError('인증 서비스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+          return;
+        }
+
         if (signUpResult?.user) {
           console.log('Signup result:', {
             user: signUpResult.user,
@@ -123,22 +156,33 @@ export default function SignUpPage() {
           });
 
           // 2. users 테이블에 추가 정보 저장 (이메일 확인 여부와 관계없이 실행)
+          console.log('Creating user profile...');
+          const profileData = {
+            id: signUpResult.user.id,
+            email: formData.email,
+            name: formData.name,
+            role: 'STUDENT', // 기본 역할
+            user_type: formData.userType, // 사용자 타입 추가
+            nickname: formData.nickname || null,
+            phone: formData.phone || null,
+          };
+          console.log('Profile data to insert:', profileData);
+
           const profileResult = await safeSupabaseOperation(async (client) => {
-            const { error: profileError } = await client.from('users').insert({
-              id: signUpResult.user.id,
-              email: formData.email,
-              name: formData.name,
-              role: 'STUDENT', // 기본 역할
-              user_type: formData.userType, // 사용자 타입 추가
-              nickname: formData.nickname || null,
-              phone: formData.phone || null,
-              // agreed_to_marketing 컬럼이 없을 수 있으므로 제거
-            });
+            const { error: profileError } = await client.from('users').insert(profileData);
 
             if (profileError) {
               console.error('Profile creation error:', profileError);
+              console.error('Profile error details:', {
+                message: profileError.message,
+                details: profileError.details,
+                hint: profileError.hint,
+                code: profileError.code
+              });
               // Auth 사용자는 생성되었지만 프로필은 실패한 경우에도 계속 진행
               // 나중에 로그인 시 프로필을 다시 생성할 수 있음
+            } else {
+              console.log('Profile created successfully');
             }
 
             return !profileError;
