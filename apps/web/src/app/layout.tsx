@@ -172,8 +172,7 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        {/* <Providers>{children}</Providers> */}
-        {children}
+        <Providers>{children}</Providers>
 
         {/* 에러 추적을 위한 글로벌 에러 핸들러 */}
         <script
