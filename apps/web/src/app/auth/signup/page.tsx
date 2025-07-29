@@ -76,10 +76,12 @@ export default function SignUpPage() {
 
       try {
         // 안전한 Supabase 동적 import
-        const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation } = await import('@/lib/supabase');
+        const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation, getSupabaseError } = await import('@/lib/supabase');
 
         if (!isSupabaseReady()) {
-          setError('인증 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+          const supabaseError = getSupabaseError();
+          console.error('Supabase not ready:', supabaseError);
+          setError(`인증 서비스 연결 실패: ${supabaseError?.message || '알 수 없는 오류'}`);
           return;
         }
 

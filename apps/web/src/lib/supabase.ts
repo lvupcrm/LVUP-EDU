@@ -8,20 +8,38 @@ let isInitialized = false;
 // 안전한 Supabase 클라이언트 생성 함수
 function createSafeSupabaseClient() {
   try {
-    const env = validateClientEnv();
+    // 환경 변수 직접 접근으로 변경
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    console.log('Supabase URL exists:', !!supabaseUrl);
+    console.log('Supabase Key exists:', !!supabaseAnonKey);
+
+    // 환경변수 존재 여부 확인
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase environment variables are missing');
+    }
 
     // 환경변수가 placeholder인지 확인
     if (
-      env.NEXT_PUBLIC_SUPABASE_URL.includes('PLACEHOLDER') ||
-      env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes('PLACEHOLDER')
+      supabaseUrl.includes('PLACEHOLDER') ||
+      supabaseAnonKey.includes('PLACEHOLDER') ||
+      supabaseUrl.includes('your-project') ||
+      supabaseAnonKey.includes('your-anon-key')
     ) {
-      throw new Error('Environment variables are not properly configured');
+      throw new Error('Environment variables contain placeholder values');
     }
 
-    return createClient(
-      env.NEXT_PUBLIC_SUPABASE_URL,
-      env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
+    // URL 형식 검증
+    if (!supabaseUrl.startsWith('https://') || !supabaseUrl.includes('supabase.co')) {
+      throw new Error('Invalid Supabase URL format');
+    }
+
+    console.log('Creating Supabase client...');
+    const client = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('Supabase client created successfully');
+    
+    return client;
   } catch (error) {
     initializationError =
       error instanceof Error
