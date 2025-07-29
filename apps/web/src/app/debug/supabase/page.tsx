@@ -119,7 +119,7 @@ export default function SupabaseDebugPage() {
       }
 
       const testData = {
-        email: 'debug-test@gmail.com',
+        email: 'testuser12345@naver.com',
         password: 'debugtest123',
         name: '디버그 테스트',
         userType: 'TRAINER',
@@ -132,8 +132,40 @@ export default function SupabaseDebugPage() {
       resultText += `  이름: ${testData.name}\n`;
       resultText += `  타입: ${testData.userType}\n\n`;
 
-      // Step 1: Auth signup 시도
-      resultText += '1단계: Supabase Auth 회원가입 시도...\n';
+      // Step 1: Supabase 프로젝트 정보 먼저 확인
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      resultText += '🔧 Supabase 프로젝트 설정 확인:\n';
+      resultText += `  URL: ${supabaseUrl ? '✅ 존재' : '❌ 없음'}\n`;
+      resultText += `  Key: ${supabaseKey ? '✅ 존재' : '❌ 없음'}\n`;
+      
+      if (supabaseUrl) {
+        const projectMatch = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
+        if (projectMatch) {
+          resultText += `  Project ID: ${projectMatch[1]}\n`;
+        }
+      }
+      resultText += '\n';
+
+      // Step 2: Auth 설정 상태 확인
+      resultText += '🔍 Auth 설정 상태 확인:\n';
+      const authStatusResult = await safeSupabaseOperation(async client => {
+        // Auth 설정 정보 확인
+        const { data: { session }, error } = await client.auth.getSession();
+        return { session, error };
+      });
+      
+      if (authStatusResult) {
+        resultText += `  세션 상태: ${authStatusResult.session ? 'Active' : 'None'}\n`;
+        resultText += `  Auth 서비스: ✅ 정상\n`;
+      } else {
+        resultText += `  Auth 서비스: ❌ 연결 실패\n`;
+      }
+      resultText += '\n';
+
+      // Step 3: Auth signup 시도  
+      resultText += '⚡ Auth 회원가입 시도...\n';
 
       const signUpResult = await safeSupabaseOperation(async client => {
         const { data, error } = await client.auth.signUp({
