@@ -49,11 +49,11 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil((count || 0) / limit)
 
   // 통계
-  const { data: stats } = await supabase
+  const { count: stats } = await supabase
     .from('users')
     .select('*', { count: 'exact', head: true })
 
-  const { data: instructorCount } = await supabase
+  const { count: instructorCount } = await supabase
     .from('instructors')
     .select('*', { count: 'exact', head: true })
 
@@ -70,17 +70,17 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow-soft p-4">
             <p className="text-sm text-gray-600">전체 사용자</p>
-            <p className="text-2xl font-bold text-gray-900">{stats?.count || 0}</p>
+            <p className="text-2xl font-bold text-gray-900">{stats || 0}</p>
           </div>
           <div className="bg-white rounded-lg shadow-soft p-4">
             <p className="text-sm text-gray-600">수강생</p>
             <p className="text-2xl font-bold text-gray-900">
-              {(stats?.count || 0) - (instructorCount?.count || 0)}
+              {(stats || 0) - (instructorCount || 0)}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow-soft p-4">
             <p className="text-sm text-gray-600">강사</p>
-            <p className="text-2xl font-bold text-gray-900">{instructorCount?.count || 0}</p>
+            <p className="text-2xl font-bold text-gray-900">{instructorCount || 0}</p>
           </div>
         </div>
 
