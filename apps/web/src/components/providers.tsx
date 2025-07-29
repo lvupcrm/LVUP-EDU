@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Header } from '@/components/layout/header';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -116,8 +115,7 @@ class ErrorBoundary extends React.Component<
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
-      <Header />
-      <main>{children}</main>
+      {children}
     </ErrorBoundary>
   );
 }
