@@ -1,10 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { generateOrderId } from '@/lib/toss-payments'
+import { authenticateUser } from '@/middleware/auth'
+import { validateRequestBody, logSecurityEvent, checkIPRateLimit } from '@/lib/security'
 
 export async function POST(request: NextRequest) {
   try {
-    const { courseId, userId } = await request.json()
+    // Security checks
+    const clientIP = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    
+    if (!checkIPRateLimit(clientIP, 50, 60000)) {
+      logSecurityEvent('rate_limit', { ip: clientIP, endpoint: '/api/orders/create' })
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429 }
+      )
+    }
+    
+    // Authentication check
+    const authResult = await authenticateUser(request)
+    if (!authResult.authorized) {
+      logSecurityEvent('auth_failure', { ip: clientIP, endpoint: '/api/orders/create' })
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    const requestBody = await request.json()
+    const { isValid, sanitized, errors } = validateRequestBody(requestBody)
+    
+    if (!isValid) {
+      logSecurityEvent('sql_injection', { ip: clientIP, errors })
+      return NextResponse.json(
+        { error: 'Invalid request data' },
+        { status: 400 }
+      )
+    }
+    
+    const { courseId, userId } = sanitized
 
     if (!courseId || !userId) {
       return NextResponse.json(
