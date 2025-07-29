@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/solid'
+import { CheckCircleIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid'
 
 export default function WelcomePage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const emailConfirmationRequired = searchParams.get('emailConfirmation') === 'required'
 
   useEffect(() => {
     const getUser = async () => {
@@ -117,6 +120,25 @@ export default function WelcomePage() {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-fitness-50">
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center">
+          {/* 이메일 확인 필요 메시지 */}
+          {emailConfirmationRequired && (
+            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mb-4">
+                <ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-yellow-800 mb-2">
+                📧 이메일 확인이 필요합니다
+              </h2>
+              <p className="text-yellow-700 mb-4">
+                가입한 이메일 주소로 확인 메일을 발송했습니다.<br />
+                이메일의 링크를 클릭하여 계정을 활성화해주세요.
+              </p>
+              <p className="text-sm text-yellow-600">
+                이메일이 보이지 않으면 스팸 폴더를 확인해주세요.
+              </p>
+            </div>
+          )}
+
           {/* 웰컴 메시지 */}
           <div className="mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
@@ -126,14 +148,16 @@ export default function WelcomePage() {
               🎉 회원가입이 완료되었습니다!
             </h1>
             <p className="text-xl text-gray-600 mb-2">
-              <strong className="text-primary-600">{user.name}</strong>님, LVUP EDU에 오신 것을 환영합니다!
+              <strong className="text-primary-600">{user?.name || '사용자'}</strong>님, LVUP EDU에 오신 것을 환영합니다!
             </p>
-            <p className="text-gray-500">
-              <span className="inline-flex items-center px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
-                {getUserTypeLabel(user.userType)}
-              </span>
-              로 등록되었습니다
-            </p>
+            {user?.userType && (
+              <p className="text-gray-500">
+                <span className="inline-flex items-center px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
+                  {getUserTypeLabel(user.userType)}
+                </span>
+                로 등록되었습니다
+              </p>
+            )}
           </div>
 
           {/* 다음 단계 안내 */}

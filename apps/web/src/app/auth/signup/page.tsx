@@ -38,6 +38,7 @@ export default function SignUpPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +74,7 @@ export default function SignUpPage() {
 
       setLoading(true);
       setError('');
+      setSuccess('');
 
       try {
         // 안전한 Supabase 동적 import
@@ -114,14 +116,13 @@ export default function SignUpPage() {
         });
 
         if (signUpResult?.user) {
-          // 이메일 확인이 필요한지 체크
-          if (!signUpResult.user.email_confirmed_at && !signUpResult.session) {
-            // 이메일 확인이 필요한 경우
-            setError('회원가입이 완료되었습니다! 이메일을 확인하여 계정을 활성화해주세요.');
-            return;
-          }
+          console.log('Signup result:', {
+            user: signUpResult.user,
+            session: signUpResult.session,
+            emailConfirmed: signUpResult.user.email_confirmed_at
+          });
 
-          // 2. users 테이블에 추가 정보 저장
+          // 2. users 테이블에 추가 정보 저장 (이메일 확인 여부와 관계없이 실행)
           const profileResult = await safeSupabaseOperation(async (client) => {
             const { error: profileError } = await client.from('users').insert({
               id: signUpResult.user.id,
@@ -143,17 +144,31 @@ export default function SignUpPage() {
             return !profileError;
           });
 
-          // 회원가입 성공 (프로필 생성 실패여도 Auth는 성공)
-          router.push('/auth/welcome');
+          // 이메일 확인이 필요한지 체크
+          if (!signUpResult.user.email_confirmed_at && !signUpResult.session) {
+            // 이메일 확인이 필요한 경우 - welcome 페이지로 이동하되 이메일 확인 안내 표시
+            console.log('Email confirmation required, redirecting to welcome with message');
+            setSuccess('회원가입이 완료되었습니다! 잠시 후 환영 페이지로 이동합니다...');
+            setTimeout(() => {
+              router.push('/auth/welcome?emailConfirmation=required');
+            }, 1500);
+          } else {
+            // 이메일 확인이 불필요하거나 이미 확인된 경우
+            console.log('Email confirmation not required, redirecting to welcome');
+            setSuccess('회원가입이 완료되었습니다! 잠시 후 환영 페이지로 이동합니다...');
+            setTimeout(() => {
+              router.push('/auth/welcome');
+            }, 1500);
+          }
         } else {
           setError('회원가입 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
         }
       } catch (err) {
         console.error('Signup error:', err);
         setError(err instanceof Error ? err.message : '회원가입 중 오류가 발생했습니다.');
-      } finally {
         setLoading(false);
       }
+      // 성공한 경우 로딩을 유지하여 페이지 이동을 표시
     }
   };
 
@@ -214,6 +229,12 @@ export default function SignUpPage() {
           {error && (
             <div className='bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm'>
               {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className='bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm'>
+              {success}
             </div>
           )}
 
