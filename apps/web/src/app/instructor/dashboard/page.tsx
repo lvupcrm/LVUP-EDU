@@ -222,13 +222,13 @@ export default async function InstructorDashboard() {
                   {recentEnrollments.map((enrollment) => (
                     <div key={enrollment.id} className="text-sm">
                       <div className="font-medium text-gray-900">
-                        {enrollment.user?.name}
+                        {(enrollment as any).user?.name}
                       </div>
                       <div className="text-gray-600">
-                        {enrollment.course?.title}
+                        {(enrollment as any).course?.title}
                       </div>
                       <div className="text-gray-500 text-xs mt-1">
-                        {new Date(enrollment.enrolled_at).toLocaleDateString('ko-KR')}
+                        {new Date((enrollment as any).enrolled_at).toLocaleDateString('ko-KR')}
                       </div>
                     </div>
                   ))}
