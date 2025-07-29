@@ -51,10 +51,18 @@ export default function LoginTestPage() {
         resultText += `📝 기존 세션 없음 (정상)\n\n`;
       }
 
-      // Step 3: 로그인 시도
+      // Step 3: 로그인 시도 (직접 클라이언트 사용으로 변경)
       resultText += '3단계: 로그인 시도...\n';
       
-      const loginResult = await safeSupabaseOperation(async (client) => {
+      const client = getSupabaseClient();
+      if (!client) {
+        resultText += `❌ Supabase 클라이언트를 가져올 수 없습니다.\n\n`;
+        setResult(resultText);
+        return;
+      }
+
+      let loginResult;
+      try {
         console.log('Attempting login with:', {
           email: testData.email,
           passwordLength: testData.password.length
@@ -77,15 +85,40 @@ export default function LoginTestPage() {
 
         if (error) {
           console.error('Login error details:', error);
-          throw new Error(`로그인 실패: ${error.message}`);
+          resultText += `❌ 로그인 실패:\n`;
+          resultText += `   Error: ${error.message}\n`;
+          resultText += `   Status: ${error.status}\n`;
+          resultText += `   Code: ${error.code || 'N/A'}\n\n`;
+          
+          // 일반적인 오류 해결 제안
+          if (error.message.includes('Invalid login credentials')) {
+            resultText += `💡 해결 방법:\n`;
+            resultText += `   - 이메일/비밀번호가 정확한지 확인\n`;
+            resultText += `   - 계정이 존재하는지 확인\n`;
+            resultText += `   - 이메일 확인이 필요한지 확인\n\n`;
+          } else if (error.message.includes('Email not confirmed')) {
+            resultText += `💡 해결 방법:\n`;
+            resultText += `   - 이메일 확인 링크를 클릭하세요\n`;
+            resultText += `   - 또는 Supabase에서 이메일 확인 비활성화\n\n`;
+          }
+          
+          setResult(resultText);
+          return;
         }
 
-        return data;
-      });
+        loginResult = data;
+      } catch (directError) {
+        console.error('Direct login error:', directError);
+        resultText += `❌ 직접 로그인 시도 실패:\n`;
+        resultText += `   Error: ${directError instanceof Error ? directError.message : '알 수 없는 오류'}\n`;
+        resultText += `   Stack: ${directError instanceof Error ? directError.stack : 'N/A'}\n\n`;
+        setResult(resultText);
+        return;
+      }
 
-      if (loginResult === null) {
-        resultText += `❌ safeSupabaseOperation 반환값이 null\n`;
-        resultText += `   이는 Supabase 연결 문제일 가능성이 높습니다.\n\n`;
+      if (!loginResult) {
+        resultText += `❌ 로그인 결과가 비어있습니다\n`;
+        resultText += `   예상치 못한 응답입니다.\n\n`;
       } else if (loginResult?.user) {
         resultText += `✅ 로그인 성공!\n`;
         resultText += `   User ID: ${loginResult.user.id}\n`;
