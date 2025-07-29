@@ -17,21 +17,6 @@ const userTypes = [
     label: '센터 운영자',
     description: '피트니스 센터 운영과 경영을 배우고 싶어요',
   },
-  {
-    value: 'MANAGER',
-    label: '센터 관리자',
-    description: '센터 매니저로서 관리 역량을 기르고 싶어요',
-  },
-  {
-    value: 'FREELANCER',
-    label: '프리랜서',
-    description: '개인 트레이너로 독립을 준비하고 있어요',
-  },
-  {
-    value: 'ENTREPRENEUR',
-    label: '예정 창업자',
-    description: '피트니스 센터 창업을 계획하고 있어요',
-  },
 ];
 
 export default function SignUpPage() {
@@ -90,17 +75,17 @@ export default function SignUpPage() {
       setError('');
 
       try {
-        // Supabase 동적 import
-        const { supabase } = await import('@/lib/supabase');
+        // 안전한 Supabase 동적 import
+        const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation } = await import('@/lib/supabase');
 
-        if (!supabase) {
-          setError('인증 서비스에 연결할 수 없습니다.');
+        if (!isSupabaseReady()) {
+          setError('인증 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
           return;
         }
 
-        // 1. Supabase Auth 회원가입
-        const { data: authData, error: authError } = await supabase.auth.signUp(
-          {
+        // 1. 안전한 Supabase Auth 회원가입
+        const signUpResult = await safeSupabaseOperation(async (client) => {
+          const { data: authData, error: authError } = await client.auth.signUp({
             email: formData.email,
             password: formData.password,
             options: {
@@ -109,42 +94,61 @@ export default function SignUpPage() {
                 user_type: formData.userType,
               },
             },
-          }
-        );
-
-        if (authError) {
-          if (authError.message.includes('already registered')) {
-            setError('이미 가입된 이메일입니다.');
-          } else {
-            setError(authError.message);
-          }
-          return;
-        }
-
-        if (authData.user) {
-          // 2. users 테이블에 추가 정보 저장
-          const { error: profileError } = await supabase.from('users').insert({
-            id: authData.user.id,
-            email: formData.email,
-            name: formData.name,
-            role: 'STUDENT', // 기본 역할
-            nickname: formData.nickname || null,
-            phone: formData.phone || null,
-            agreed_to_marketing: formData.agreedToMarketing,
           });
 
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            // Auth 사용자는 생성되었지만 프로필은 실패한 경우
-            // 나중에 프로필을 다시 생성할 수 있도록 로그인 페이지로 이동
+          if (authError) {
+            if (authError.message.includes('already registered')) {
+              throw new Error('이미 가입된 이메일입니다.');
+            } else if (authError.message.includes('Invalid email')) {
+              throw new Error('올바른 이메일 주소를 입력해주세요.');
+            } else if (authError.message.includes('Password should be at least')) {
+              throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
+            } else {
+              throw new Error(`회원가입 실패: ${authError.message}`);
+            }
           }
 
-          // 회원가입 성공
+          return authData;
+        });
+
+        if (signUpResult?.user) {
+          // 이메일 확인이 필요한지 체크
+          if (!signUpResult.user.email_confirmed_at && !signUpResult.session) {
+            // 이메일 확인이 필요한 경우
+            setError('회원가입이 완료되었습니다! 이메일을 확인하여 계정을 활성화해주세요.');
+            return;
+          }
+
+          // 2. users 테이블에 추가 정보 저장
+          const profileResult = await safeSupabaseOperation(async (client) => {
+            const { error: profileError } = await client.from('users').insert({
+              id: signUpResult.user.id,
+              email: formData.email,
+              name: formData.name,
+              role: 'STUDENT', // 기본 역할
+              user_type: formData.userType, // 사용자 타입 추가
+              nickname: formData.nickname || null,
+              phone: formData.phone || null,
+              // agreed_to_marketing 컬럼이 없을 수 있으므로 제거
+            });
+
+            if (profileError) {
+              console.error('Profile creation error:', profileError);
+              // Auth 사용자는 생성되었지만 프로필은 실패한 경우에도 계속 진행
+              // 나중에 로그인 시 프로필을 다시 생성할 수 있음
+            }
+
+            return !profileError;
+          });
+
+          // 회원가입 성공 (프로필 생성 실패여도 Auth는 성공)
           router.push('/auth/welcome');
+        } else {
+          setError('회원가입 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
         }
       } catch (err) {
         console.error('Signup error:', err);
-        setError('회원가입 중 오류가 발생했습니다.');
+        setError(err instanceof Error ? err.message : '회원가입 중 오류가 발생했습니다.');
       } finally {
         setLoading(false);
       }

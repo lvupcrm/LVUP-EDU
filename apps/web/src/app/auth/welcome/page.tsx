@@ -3,26 +3,50 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/solid'
-import { supabase } from '@/lib/supabase'
 
 export default function WelcomePage() {
   const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      if (authUser) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authUser.id)
-          .single()
-        
-        setUser({
-          ...authUser,
-          ...profile,
-          userType: authUser.user_metadata?.user_type || 'TRAINER'
+      try {
+        // 안전한 Supabase 동적 import
+        const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation } = await import('@/lib/supabase')
+
+        if (!isSupabaseReady()) {
+          console.warn('Supabase client not ready')
+          setLoading(false)
+          return
+        }
+
+        // 안전한 사용자 정보 가져오기
+        const authUser = await safeSupabaseOperation(async (client) => {
+          const { data: { user } } = await client.auth.getUser()
+          return user
         })
+
+        if (authUser) {
+          // 안전한 프로필 정보 가져오기
+          const profile = await safeSupabaseOperation(async (client) => {
+            const { data } = await client
+              .from('users')
+              .select('*')
+              .eq('id', authUser.id)
+              .single()
+            return data
+          })
+          
+          setUser({
+            ...authUser,
+            ...profile,
+            userType: authUser.user_metadata?.user_type || profile?.user_type || 'TRAINER'
+          })
+        }
+      } catch (error) {
+        console.error('Error getting user:', error)
+      } finally {
+        setLoading(false)
       }
     }
     getUser()
@@ -65,10 +89,24 @@ export default function WelcomePage() {
     return recommendations[userType] || recommendations.TRAINER
   }
 
-  if (!user) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">사용자 정보를 찾을 수 없습니다</h1>
+          <p className="text-gray-600 mb-6">로그인 후 다시 시도해주세요.</p>
+          <Link href="/auth/login" className="btn-primary">
+            로그인 페이지로 이동
+          </Link>
+        </div>
       </div>
     )
   }
