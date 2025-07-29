@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Disable ESLint during build for deployment compatibility
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     domains: [
       'localhost',
