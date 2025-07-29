@@ -1,9 +1,8 @@
-'use client'
+'use client';
 
-import { QueryClient, QueryClientProvider } from 'react-query'
-import { ReactQueryDevtools } from 'react-query/devtools'
-import { SessionProvider } from 'next-auth/react'
-import { useState } from 'react'
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { ReactQueryDevtools } from 'react-query/devtools';
+import { useState } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -18,14 +17,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
         },
       })
-  )
+  );
 
   return (
-    <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
-    </SessionProvider>
-  )
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
 }
