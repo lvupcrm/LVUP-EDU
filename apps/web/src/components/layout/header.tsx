@@ -23,6 +23,11 @@ export function Header() {
     // 현재 사용자 세션 확인
     const checkUser = async () => {
       try {
+        if (!supabase) {
+          setLoading(false)
+          return
+        }
+        
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           // 사용자 프로필 정보 가져오기
@@ -48,20 +53,34 @@ export function Header() {
     checkUser()
 
     // 인증 상태 변경 리스너
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        checkUser()
-      } else {
-        setUser(null)
+    let subscription: any = null
+    try {
+      if (supabase) {
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session?.user) {
+            checkUser()
+          } else {
+            setUser(null)
+          }
+        })
+        subscription = data
       }
-    })
+    } catch (error) {
+      console.error('Error setting up auth listener:', error)
+    }
 
-    return () => subscription.unsubscribe()
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe()
+      }
+    }
   }, [])
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut()
+      if (supabase) {
+        await supabase.auth.signOut()
+      }
       setUser(null)
       router.push('/')
     } catch (error) {

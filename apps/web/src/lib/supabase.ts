@@ -1,9 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
 import { validateClientEnv } from './env-validation'
 
-const env = validateClientEnv()
+let supabaseInstance: ReturnType<typeof createClient> | null = null
 
-export const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+export const supabase = (() => {
+  if (!supabaseInstance) {
+    try {
+      const env = validateClientEnv()
+      supabaseInstance = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    } catch (error) {
+      console.error('Supabase client initialization failed:', error)
+      // Provide a mock client for build time
+      supabaseInstance = createClient(
+        'https://placeholder.supabase.co',
+        'placeholder-anon-key'
+      )
+    }
+  }
+  return supabaseInstance
+})()
 
 // 타입 정의
 export interface Database {
