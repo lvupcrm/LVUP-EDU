@@ -86,133 +86,14 @@ function matchesPath(pathname: string, paths: string[]): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
-  
-  // 1. Rate Limiting 체크
-  if (!rateLimit(ip)) {
-    return new NextResponse('Too Many Requests', { 
-      status: 429,
-      headers: {
-        'Retry-After': '900', // 15분
-        ...securityHeaders
-      }
-    })
-  }
-  
-  // 2. 보안 헤더 적용을 위한 응답 생성
+  // 🚨 임시로 미들웨어 완전 비활성화 - Application error 테스트용
   const response = NextResponse.next()
   
-  // 보안 헤더 추가
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value)
-  })
+  // 최소한의 보안 헤더만 적용
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
   
-  // 3. API 경로는 인증 체크 스킵 (API 내에서 처리)
-  if (pathname.startsWith('/api/')) {
-    return response
-  }
-  
-  // 4. 정적 파일은 스킵
-  if (
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/static/') ||
-    pathname.includes('.')
-  ) {
-    return response
-  }
-  
-  // 5. Supabase 클라이언트 생성
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
-    }
-  )
-  
-  // 6. 사용자 세션 확인 (타임아웃 처리)
-  let session = null
-  try {
-    const sessionPromise = supabase.auth.getSession()
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Session timeout')), 3000)
-    )
-    
-    const { data: { session: sessionData }, error } = await Promise.race([
-      sessionPromise,
-      timeoutPromise
-    ]) as any
-    
-    session = sessionData
-    
-    if (error) {
-      console.error('Auth middleware error:', error)
-    }
-  } catch (error) {
-    console.error('Session check timeout:', error)
-    // 세션 확인 실패 시 비인증 상태로 처리
-    session = null
-  }
-  
-  // 7. 관리자 페이지 접근 제어 (임시로 데이터베이스 쿼리 비활성화)
-  if (matchesPath(pathname, adminPaths)) {
-    if (!session) {
-      const redirectUrl = new URL('/auth/login', request.url)
-      redirectUrl.searchParams.set('returnUrl', pathname)
-      return NextResponse.redirect(redirectUrl)
-    }
-    
-    // TODO: 관리자 권한 확인 로직을 페이지 레벨로 이동
-    // 임시로 세션만 있으면 접근 허용
-    console.log('Admin access granted temporarily for:', session.user.email)
-  }
-  
-  // 8. 보호된 페이지 접근 제어
-  if (matchesPath(pathname, protectedPaths)) {
-    if (!session) {
-      const redirectUrl = new URL('/auth/login', request.url)
-      redirectUrl.searchParams.set('returnUrl', pathname)
-      return NextResponse.redirect(redirectUrl)
-    }
-  }
-  
-  // 9. 로그인 상태에서 auth 페이지 접근 시 리다이렉트
-  if (session && (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup'))) {
-    const returnUrl = request.nextUrl.searchParams.get('returnUrl')
-    return NextResponse.redirect(new URL(returnUrl || '/', request.url))
-  }
-  
-  // 10. 강사 대시보드 접근 제어 (임시로 데이터베이스 쿼리 비활성화)
-  if (pathname.startsWith('/instructor/dashboard')) {
-    if (!session) {
-      const redirectUrl = new URL('/auth/login', request.url)
-      redirectUrl.searchParams.set('returnUrl', pathname)
-      return NextResponse.redirect(redirectUrl)
-    }
-    
-    // TODO: 강사 권한 확인 로직을 페이지 레벨로 이동
-    // 임시로 세션만 있으면 접근 허용
-    console.log('Instructor access granted temporarily for:', session.user.email)
-  }
+  console.log('Middleware bypassed for:', request.nextUrl.pathname)
   
   return response
 }

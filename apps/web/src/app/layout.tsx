@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lvup-edu-web-h1ln-psi.vercel.app'),
+  metadataBase: new URL('https://lvup-edu-web-h1ln-psi.vercel.app'),
   alternates: {
     canonical: '/',
   },
@@ -78,10 +78,10 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.GOOGLE_VERIFICATION_ID,
-    other: {
-      'naver-site-verification': process.env.NAVER_VERIFICATION_ID || '',
-    },
+    // google: process.env.GOOGLE_VERIFICATION_ID,
+    // other: {
+    //   'naver-site-verification': process.env.NAVER_VERIFICATION_ID || '',
+    // },
   },
   category: 'education',
 }
@@ -121,8 +121,8 @@ export default function RootLayout({
               "@type": "Organization",
               "name": "LVUP EDU",
               "description": "피트니스 전문가를 위한 온라인 교육 플랫폼",
-              "url": process.env.NEXT_PUBLIC_SITE_URL,
-              "logo": `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`,
+              "url": "https://lvup-edu-web-h1ln-psi.vercel.app",
+              "logo": "https://lvup-edu-web-h1ln-psi.vercel.app/logo.png",
               "contactPoint": {
                 "@type": "ContactPoint",
                 "telephone": "+82-2-1234-5678",
@@ -147,8 +147,8 @@ export default function RootLayout({
               "@type": "EducationalOrganization",
               "name": "LVUP EDU",
               "description": "피트니스 전문가를 위한 온라인 교육 플랫폼",
-              "url": process.env.NEXT_PUBLIC_SITE_URL,
-              "logo": `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`,
+              "url": "https://lvup-edu-web-h1ln-psi.vercel.app",
+              "logo": "https://lvup-edu-web-h1ln-psi.vercel.app/logo.png",
               "address": {
                 "@type": "PostalAddress",
                 "addressCountry": "KR",
@@ -169,8 +169,8 @@ export default function RootLayout({
           {children}
         </Providers>
         
-        {/* Google Analytics */}
-        {process.env.NEXT_PUBLIC_GA_ID && (
+        {/* Google Analytics - 임시 비활성화 */}
+        {/* {process.env.NEXT_PUBLIC_GA_ID && (
           <>
             <script
               async
@@ -190,7 +190,7 @@ export default function RootLayout({
               }}
             />
           </>
-        )}
+        )} */}
       </body>
     </html>
   )
