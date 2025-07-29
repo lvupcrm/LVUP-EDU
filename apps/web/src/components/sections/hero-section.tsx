@@ -102,8 +102,8 @@ export function HeroSection() {
                       </div>
                       
                       <div className="text-right">
-                        <div className="text-lg font-bold text-gray-900">₹99,000</div>
-                        <div className="text-sm text-gray-500 line-through">₹129,000</div>
+                        <div className="text-lg font-bold text-gray-900">₩99,000</div>
+                        <div className="text-sm text-gray-500 line-through">₩129,000</div>
                       </div>
                     </div>
                   </div>
