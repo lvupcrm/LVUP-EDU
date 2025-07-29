@@ -37,11 +37,12 @@ Sentry.init({
     return event;
   },
   
-  // Server integrations
+  // Server integrations - simplified for compatibility
   integrations: [
-    new Sentry.Integrations.Http({ tracing: true }),
-    new Sentry.Integrations.OnUncaughtException(),
-    new Sentry.Integrations.OnUnhandledRejection(),
+    // Advanced integrations disabled for build compatibility
+    // new Sentry.Integrations.Http({ tracing: true }),
+    // new Sentry.Integrations.OnUncaughtException(),
+    // new Sentry.Integrations.OnUnhandledRejection(),
   ],
   
   // Additional context
