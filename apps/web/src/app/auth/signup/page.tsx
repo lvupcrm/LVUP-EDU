@@ -50,6 +50,13 @@ export default function SignUpPage() {
         return;
       }
 
+      // 이메일 형식 검증
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError('올바른 이메일 주소를 입력해주세요.');
+        return;
+      }
+
       if (formData.password !== formData.confirmPassword) {
         setError('비밀번호가 일치하지 않습니다.');
         return;
@@ -59,6 +66,17 @@ export default function SignUpPage() {
         setError('비밀번호는 최소 6자 이상이어야 합니다.');
         return;
       }
+
+      // 비밀번호 복잡성 검증 (선택적)
+      if (formData.password.length < 8) {
+        console.warn('Password is shorter than recommended 8 characters');
+      }
+
+      console.log('Step 1 validation passed:', {
+        email: formData.email,
+        passwordLength: formData.password.length,
+        name: formData.name
+      });
 
       setError('');
       setStep(2);

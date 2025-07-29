@@ -1,0 +1,21 @@
+{
+  "name": "LVUP EDU - 피트니스 전문가 교육 플랫폼",
+  "short_name": "LVUP EDU",
+  "description": "피트니스 전문가를 위한 최고의 온라인 교육 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#667eea",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
