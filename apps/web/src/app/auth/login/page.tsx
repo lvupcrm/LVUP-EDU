@@ -21,16 +21,22 @@ export default function LoginPage() {
     setError('');
 
     try {
+      console.log('Starting login process...');
+      
       // 안전한 Supabase 동적 import
-      const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation } =
+      const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation, getSupabaseError } =
         await import('@/lib/supabase');
 
       if (!isSupabaseReady()) {
+        const supabaseError = getSupabaseError();
+        console.error('Supabase not ready for login:', supabaseError);
         setError(
-          '인증 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'
+          `인증 서비스 연결 실패: ${supabaseError?.message || '알 수 없는 오류'}`
         );
         return;
       }
+
+      console.log('Attempting login with email:', formData.email);
 
       // 안전한 로그인 시도
       const loginResult = await safeSupabaseOperation(async client => {
@@ -40,10 +46,20 @@ export default function LoginPage() {
             password: formData.password,
           });
 
+        console.log('Login attempt result:', {
+          hasData: !!data,
+          hasUser: !!data?.user,
+          hasSession: !!data?.session,
+          error: signInError?.message
+        });
+
         if (signInError) {
+          console.error('Login error details:', signInError);
           throw new Error(
             signInError.message === 'Invalid login credentials'
               ? '이메일 또는 비밀번호가 올바르지 않습니다.'
+              : signInError.message.includes('Email not confirmed')
+              ? '이메일 확인이 필요합니다. 가입 시 받은 인증 메일을 확인해주세요.'
               : signInError.message
           );
         }
@@ -51,10 +67,14 @@ export default function LoginPage() {
         return data;
       });
 
-      if (loginResult) {
+      if (loginResult?.user) {
+        console.log('Login successful, redirecting...');
         // 로그인 성공
         router.push('/');
         router.refresh();
+      } else {
+        console.error('Login failed - no user returned');
+        setError('로그인에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (err) {
       console.error('Login error:', err);
