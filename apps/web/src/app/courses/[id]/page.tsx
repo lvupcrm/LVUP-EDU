@@ -341,7 +341,7 @@ export default async function CoursePage({ params }: PageProps) {
                 ) : (
                   <>
                     <Link
-                      href={`/payment/${course.id}`}
+                      href={user ? `/payment/${course.id}?userId=${user.id}` : `/auth/login?returnUrl=/payment/${course.id}`}
                       className="btn-primary w-full justify-center mb-3"
                     >
                       수강 신청하기
