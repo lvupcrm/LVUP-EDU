@@ -34,6 +34,12 @@ async function getCourses(searchParams: URLSearchParams): Promise<Course[]> {
         level,
         enrollment_count,
         average_rating,
+        category:categories(
+          id,
+          name,
+          slug,
+          type
+        ),
         instructor_profiles!courses_instructor_id_fkey(
           user:users(
             name,
@@ -54,6 +60,21 @@ async function getCourses(searchParams: URLSearchParams): Promise<Course[]> {
     const level = searchParams.get('level')
     if (level && level !== 'all') {
       query = query.eq('level', level.toUpperCase())
+    }
+
+    // 카테고리 필터 
+    const category = searchParams.get('category')
+    if (category && category !== 'all') {
+      // 카테고리 slug로 먼저 category_id를 찾아서 필터링
+      const { data: categoryData } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('slug', category)
+        .single()
+      
+      if (categoryData) {
+        query = query.eq('category_id', categoryData.id)
+      }
     }
 
     // 가격 필터

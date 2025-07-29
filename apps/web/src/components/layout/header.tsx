@@ -6,11 +6,22 @@ import { useRouter } from 'next/navigation'
 import { MagnifyingGlassIcon, UserIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 
-const navigation = [
-  { name: '트레이너 교육', href: '/courses/trainer' },
-  { name: '운영자 교육', href: '/courses/operator' },
+const navigation: Array<{
+  name: string
+  href: string
+  children?: Array<{ name: string; href: string }>
+}> = [
+  { 
+    name: '강의', 
+    href: '/courses',
+    children: [
+      { name: '전체 강의', href: '/courses' },
+      { name: '트레이너 교육', href: '/courses?category=trainer' },
+      { name: '운영자 교육', href: '/courses?category=operator' },
+    ]
+  },
   { name: '강사진', href: '/instructors' },
-  { name: '커뮤니티', href: '/community' },
+  { name: '수료증', href: '/certificates' },
 ]
 
 export function Header() {
@@ -119,13 +130,36 @@ export function Header() {
         {/* 데스크톱 네비게이션 */}
         <div className="hidden lg:flex lg:gap-x-8">
           {navigation.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
-            >
-              {item.name}
-            </Link>
+            <div key={item.name} className="relative group">
+              <Link
+                href={item.href}
+                className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors flex items-center"
+              >
+                {item.name}
+                {item.children && (
+                  <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </Link>
+              
+              {/* 드롭다운 메뉴 */}
+              {item.children && (
+                <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-soft border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="py-1">
+                    {item.children.map((child) => (
+                      <Link
+                        key={child.name}
+                        href={child.href}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        {child.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
@@ -258,14 +292,29 @@ export function Header() {
               <div className="-my-6 divide-y divide-gray-500/10">
                 <div className="space-y-2 py-6">
                   {navigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
+                    <div key={item.name}>
+                      <Link
+                        href={item.href}
+                        className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                      {item.children && (
+                        <div className="ml-4 space-y-1">
+                          {item.children.map((child) => (
+                            <Link
+                              key={child.name}
+                              href={child.href}
+                              className="-mx-3 block rounded-lg px-3 py-1 text-sm text-gray-600 hover:bg-gray-50"
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              {child.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
                 <div className="py-6">
