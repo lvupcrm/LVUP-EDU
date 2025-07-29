@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 
 // Rate limiting (간단한 메모리 기반 - 프로덕션에서는 Redis 사용 권장)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
@@ -123,7 +123,31 @@ export async function middleware(request: NextRequest) {
   }
   
   // 5. Supabase 클라이언트 생성
-  const supabase = createMiddlewareClient({ req: request, res: response })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: any) {
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+        },
+      },
+    }
+  )
   
   // 6. 사용자 세션 확인
   const { data: { session }, error } = await supabase.auth.getSession()
