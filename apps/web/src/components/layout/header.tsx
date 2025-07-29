@@ -36,36 +36,56 @@ export function Header() {
   const router = useRouter();
 
   useEffect(() => {
-    // 현재 사용자 세션 확인
+    // 안전한 사용자 세션 확인
     const checkUser = async () => {
       try {
-        // Supabase 동적 import
-        const { supabase } = await import('@/lib/supabase');
+        // 안전한 Supabase 클라이언트 import
+        const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation } =
+          await import('@/lib/supabase');
 
-        if (!supabase) {
+        if (!isSupabaseReady()) {
+          console.warn('Supabase client not ready, skipping user check');
           setLoading(false);
           return;
         }
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          // 사용자 프로필 정보 가져오기
-          const { data: profile } = await supabase
-            .from('users')
-            .select('name, avatar')
-            .eq('id', user.id)
-            .single();
+        // 안전한 사용자 정보 가져오기
+        const userResult = await safeSupabaseOperation(async client => {
+          const {
+            data: { user },
+            error,
+          } = await client.auth.getUser();
+          if (error) throw error;
+          return user;
+        });
+
+        if (userResult) {
+          // 사용자 프로필 정보 안전하게 가져오기
+          const profileResult = await safeSupabaseOperation(async client => {
+            const { data: profile, error } = await client
+              .from('users')
+              .select('name, avatar')
+              .eq('id', userResult.id)
+              .single();
+
+            // 프로필이 없어도 에러로 처리하지 않음
+            return profile;
+          });
 
           setUser({
-            ...user,
-            name: profile?.name || user.email?.split('@')[0],
-            avatar: profile?.avatar,
+            ...userResult,
+            name:
+              profileResult?.name ||
+              userResult.email?.split('@')[0] ||
+              '사용자',
+            avatar: profileResult?.avatar,
           });
+        } else {
+          setUser(null);
         }
       } catch (error) {
-        console.error('Error checking user:', error);
+        console.error('Error checking user (non-critical):', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -73,46 +93,73 @@ export function Header() {
 
     checkUser();
 
-    // 인증 상태 변경 리스너 설정
+    // 안전한 인증 상태 변경 리스너 설정
     let subscription: any = null;
     const setupListener = async () => {
       try {
-        const { supabase } = await import('@/lib/supabase');
-        if (supabase) {
-          const { data } = supabase.auth.onAuthStateChange(
-            (_event, session) => {
+        const { getSupabaseClient, isSupabaseReady } = await import(
+          '@/lib/supabase'
+        );
+
+        if (!isSupabaseReady()) {
+          console.warn(
+            'Supabase client not ready, skipping auth listener setup'
+          );
+          return;
+        }
+
+        const client = getSupabaseClient();
+        if (client) {
+          const { data } = client.auth.onAuthStateChange((_event, session) => {
+            try {
               if (session?.user) {
                 checkUser();
               } else {
                 setUser(null);
               }
+            } catch (error) {
+              console.error('Error in auth state change handler:', error);
+              setUser(null);
             }
-          );
+          });
           subscription = data;
         }
       } catch (error) {
-        console.error('Error setting up auth listener:', error);
+        console.error('Error setting up auth listener (non-critical):', error);
       }
     };
+
     setupListener();
 
     return () => {
-      if (subscription) {
-        subscription.unsubscribe();
+      try {
+        if (subscription) {
+          subscription.unsubscribe();
+        }
+      } catch (error) {
+        console.error('Error unsubscribing from auth listener:', error);
       }
     };
   }, []);
 
   const handleSignOut = async () => {
     try {
-      const { supabase } = await import('@/lib/supabase');
-      if (supabase) {
-        await supabase.auth.signOut();
+      const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation } =
+        await import('@/lib/supabase');
+
+      if (isSupabaseReady()) {
+        await safeSupabaseOperation(async client => {
+          await client.auth.signOut();
+        });
       }
+
       setUser(null);
       router.push('/');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Error signing out (non-critical):', error);
+      // 에러가 발생해도 UI는 로그아웃된 상태로 만듦
+      setUser(null);
+      router.push('/');
     }
   };
 
