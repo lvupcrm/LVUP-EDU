@@ -119,7 +119,7 @@ export default function SupabaseDebugPage() {
       }
 
       const testData = {
-        email: 'debug-test@lvupedu.com',
+        email: 'debug-test@gmail.com',
         password: 'debugtest123',
         name: '디버그 테스트',
         userType: 'TRAINER',

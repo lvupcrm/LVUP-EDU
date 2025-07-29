@@ -7,7 +7,7 @@ export default function TestAuthPage() {
   const [loading, setLoading] = useState(false)
 
   const testAccount = {
-    email: 'test@lvupedu.com',
+    email: 'test@gmail.com',
     password: 'test123456',
     name: '테스트 사용자'
   }
