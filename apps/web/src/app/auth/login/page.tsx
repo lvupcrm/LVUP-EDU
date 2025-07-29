@@ -40,17 +40,32 @@ export default function LoginPage() {
 
       // 안전한 로그인 시도
       const loginResult = await safeSupabaseOperation(async client => {
+        console.log('Calling signInWithPassword with:', {
+          email: formData.email,
+          passwordLength: formData.password.length
+        });
+
         const { data, error: signInError } =
           await client.auth.signInWithPassword({
             email: formData.email,
             password: formData.password,
           });
 
+        console.log('Raw login response:', {
+          data: data,
+          user: data?.user,
+          session: data?.session,
+          error: signInError
+        });
+
         console.log('Login attempt result:', {
           hasData: !!data,
           hasUser: !!data?.user,
           hasSession: !!data?.session,
-          error: signInError?.message
+          userEmail: data?.user?.email,
+          userConfirmed: data?.user?.email_confirmed_at,
+          errorMessage: signInError?.message,
+          errorCode: signInError?.status
         });
 
         if (signInError) {
@@ -60,21 +75,27 @@ export default function LoginPage() {
               ? '이메일 또는 비밀번호가 올바르지 않습니다.'
               : signInError.message.includes('Email not confirmed')
               ? '이메일 확인이 필요합니다. 가입 시 받은 인증 메일을 확인해주세요.'
-              : signInError.message
+              : `로그인 오류: ${signInError.message}`
           );
         }
 
         return data;
       });
 
-      if (loginResult?.user) {
+      console.log('Final loginResult:', loginResult);
+
+      if (loginResult === null) {
+        console.error('safeSupabaseOperation returned null');
+        setError('인증 서비스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      } else if (loginResult?.user) {
         console.log('Login successful, redirecting...');
         // 로그인 성공
         router.push('/');
         router.refresh();
       } else {
-        console.error('Login failed - no user returned');
-        setError('로그인에 실패했습니다. 다시 시도해주세요.');
+        console.error('Login failed - no user returned but no error thrown');
+        console.error('LoginResult details:', JSON.stringify(loginResult, null, 2));
+        setError('로그인에 실패했습니다. 계정 정보를 확인해주세요.');
       }
     } catch (err) {
       console.error('Login error:', err);
