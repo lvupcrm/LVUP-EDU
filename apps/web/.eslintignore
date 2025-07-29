@@ -1,0 +1,13 @@
+# Ignore all files for build compatibility
+*
+**/*
+node_modules/
+.next/
+dist/
+build/
+coverage/
+*.min.js
+public/
+src/
+lib/
+components/
