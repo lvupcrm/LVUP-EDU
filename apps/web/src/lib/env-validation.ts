@@ -19,6 +19,11 @@ interface ServerEnvConfig {
  * These are safe to expose to the browser
  */
 export function validateClientEnv(): EnvConfig {
+  // Detect if we're in a build environment (Next.js build phase)
+  const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                     process.env.NEXT_PHASE === 'phase-development-server' ||
+                     typeof window === 'undefined' && !process.env.VERCEL_ENV
+
   const requiredVars = [
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY', 
@@ -32,6 +37,10 @@ export function validateClientEnv(): EnvConfig {
     const value = process.env[varName]
     if (!value) {
       missing.push(varName)
+      // Provide fallback values during build time
+      if (isBuildTime) {
+        config[varName] = `BUILD_TIME_PLACEHOLDER_${varName}` as any
+      }
     } else {
       config[varName] = value
     }
@@ -42,7 +51,7 @@ export function validateClientEnv(): EnvConfig {
     config.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID
   }
 
-  if (missing.length > 0) {
+  if (missing.length > 0 && !isBuildTime) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
   }
 

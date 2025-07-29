@@ -1,13 +1,21 @@
 import { loadTossPayments } from '@tosspayments/payment-sdk'
 import { validateClientEnv } from './env-validation'
 
-// 토스페이먼츠 클라이언트 키 (환경 변수 검증)
-const env = validateClientEnv()
-const clientKey = env.NEXT_PUBLIC_TOSS_CLIENT_KEY
+// 토스페이먼츠 클라이언트 키 (지연 로딩)
+let clientKey: string | null = null
 
-// 토스페이먼츠 SDK 로드
+const getClientKey = (): string => {
+  if (!clientKey) {
+    const env = validateClientEnv()
+    clientKey = env.NEXT_PUBLIC_TOSS_CLIENT_KEY
+  }
+  return clientKey
+}
+
+// 토스페이먼츠 SDK 로드 (지연 초기화)
 export const getTossPayments = async () => {
-  return await loadTossPayments(clientKey)
+  const key = getClientKey()
+  return await loadTossPayments(key)
 }
 
 // 결제 요청 데이터 타입
