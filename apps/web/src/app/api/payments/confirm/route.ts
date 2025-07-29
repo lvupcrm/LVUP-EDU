@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { validateServerEnv } from '@/lib/env-validation'
 
 // 토스페이먼츠 결제 승인 API
 export async function POST(request: NextRequest) {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${Buffer.from(process.env.TOSS_SECRET_KEY + ':').toString('base64')}`,
+        'Authorization': `Basic ${Buffer.from((validateServerEnv().TOSS_SECRET_KEY) + ':').toString('base64')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

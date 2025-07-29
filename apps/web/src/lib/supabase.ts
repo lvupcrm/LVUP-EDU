@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
+import { validateClientEnv } from './env-validation'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const env = validateClientEnv()
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
 // 타입 정의
 export interface Database {

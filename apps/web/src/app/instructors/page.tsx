@@ -19,52 +19,35 @@ interface Instructor {
 }
 
 async function getInstructors(): Promise<Instructor[]> {
-  const { data: instructors, error } = await supabase
-    .from('instructor_profiles')
-    .select(`
-      id,
-      bio,
-      experience_years,
-      user_id,
-      users (
-        id,
-        name,
-        avatar,
-        specialties,
-        location
-      )
-    `)
-    .order('experience_years', { ascending: false })
+  // N+1 쿼리 문제 해결: 단일 쿼리로 강사 정보와 강의 수를 함께 가져오기
+  const { data: instructorsWithCounts, error } = await supabase
+    .rpc('get_instructors_with_course_count')
 
   if (error) {
-    console.error('Error fetching instructors:', error)
+    // Development에서만 에러 로그 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching instructors:', error)
+    }
     return []
   }
 
-  // 강의 수 계산
-  const instructorsWithCount: Instructor[] = []
-  
-  if (instructors) {
-    for (const instructor of instructors) {
-      const { count } = await supabase
-        .from('courses')
-        .select('*', { count: 'exact', head: true })
-        .eq('instructor_id', instructor.id)
-      
-      // users가 배열로 반환되는 경우를 처리
-      const user = Array.isArray(instructor.users) ? instructor.users[0] : instructor.users
-      
-      instructorsWithCount.push({
-        id: instructor.id,
-        bio: instructor.bio,
-        experience_years: instructor.experience_years,
-        users: user,
-        courseCount: count || 0
-      })
-    }
+  if (!instructorsWithCounts) {
+    return []
   }
 
-  return instructorsWithCount
+  return instructorsWithCounts.map((instructor: any) => ({
+    id: instructor.id,
+    bio: instructor.bio,
+    experience_years: instructor.experience_years,
+    users: {
+      id: instructor.user_id,
+      name: instructor.user_name,
+      avatar: instructor.user_avatar,
+      specialties: instructor.user_specialties,
+      location: instructor.user_location
+    },
+    courseCount: instructor.course_count || 0
+  }))
 }
 
 export default async function InstructorsPage() {

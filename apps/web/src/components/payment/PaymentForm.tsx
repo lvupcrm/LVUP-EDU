@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { getTossPayments, PaymentRequest, formatPrice, PaymentMethod } from '@/lib/toss-payments'
 import { CreditCardIcon, BanknotesIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline'
+import type { ComponentType } from 'react'
 
 interface PaymentFormProps {
   course: {
@@ -19,12 +20,19 @@ interface PaymentFormProps {
   orderId: string
 }
 
+interface PaymentMethodOption {
+  id: PaymentMethod
+  name: string
+  icon: ComponentType<{ className?: string }>
+  description: string
+}
+
 export default function PaymentForm({ course, user, orderId }: PaymentFormProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('카드')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const paymentMethods: { id: PaymentMethod; name: string; icon: any; description: string }[] = [
+  const paymentMethods: PaymentMethodOption[] = [
     { id: '카드', name: '신용/체크카드', icon: CreditCardIcon, description: '간편하고 빠른 카드 결제' },
     { id: '가상계좌', name: '가상계좌', icon: BanknotesIcon, description: '가상계좌로 안전한 입금' },
     { id: '간편결제', name: '간편결제', icon: DevicePhoneMobileIcon, description: '토스, 페이팔 등 간편결제' },
@@ -50,11 +58,15 @@ export default function PaymentForm({ course, user, orderId }: PaymentFormProps)
       }
 
       // 3. 결제 요청
-      await tossPayments.requestPayment(selectedMethod as any, paymentData)
+      await tossPayments.requestPayment(selectedMethod, paymentData)
 
-    } catch (error: any) {
-      console.error('Payment error:', error)
-      setError(error.message || '결제 요청 중 오류가 발생했습니다.')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '결제 요청 중 오류가 발생했습니다.'
+      // Development에서만 에러 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Payment error:', error)
+      }
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }

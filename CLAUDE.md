@@ -10,6 +10,7 @@ Claude Code와 함께 작업할 때 참고하여 같은 문제가 반복되지 �
   - Frontend: Next.js 14 (App Router), TypeScript, Tailwind CSS
   - Backend: Supabase (PostgreSQL, Auth, Storage)
   - Payment: TossPayments
+  - Video Streaming: Cloudflare Stream (준비됨) / Direct URL
   - Deployment: Vercel
 - **모노레포 구조**: Turborepo 사용
 
@@ -201,6 +202,46 @@ git commit -m "feat: 새로운 기능 추가 ✨"
 - [ ] 결제 테스트 환경 확인
 - [ ] 반응형 디자인 테스트
 
+## 동영상 스트리밍 시스템
+
+### 구현된 기능
+1. **VideoPlayer 컴포넌트**
+   - 비디오 재생/일시정지
+   - 볼륨 조절 및 음소거
+   - 전체화면 모드
+   - 진도 추적 (5초마다 자동 저장)
+   - 90% 이상 시청 시 자동 완료 처리
+
+2. **학습 진도 추적**
+   - `lesson_progress` 테이블로 개별 레슨 진도 관리
+   - 마지막 시청 위치 저장 및 이어보기
+   - 전체 코스 진도율 자동 계산
+
+3. **지원하는 비디오 소스**
+   - Direct URL (MP4 등)
+   - Cloudflare Stream (준비됨, API 키 필요)
+   - YouTube, Vimeo (추후 확장 가능)
+
+### 사용 방법
+```typescript
+// 레슨 페이지에서 VideoPlayer 사용
+<VideoPlayer
+  videoUrl={lesson.video_url}
+  videoId={lesson.video_id}
+  provider={lesson.video_provider}
+  thumbnail={lesson.video_thumbnail}
+  initialPosition={progress?.last_position}
+  onProgress={handleProgress}
+  onComplete={handleComplete}
+/>
+```
+
+### 환경 변수 (Cloudflare Stream 사용 시)
+```
+NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID=your_account_id
+CLOUDFLARE_STREAM_API_TOKEN=your_api_token
+```
+
 ## 유용한 리소스
 
 - [Next.js 14 문서](https://nextjs.org/docs)
@@ -208,6 +249,7 @@ git commit -m "feat: 새로운 기능 추가 ✨"
 - [TossPayments 문서](https://docs.tosspayments.com)
 - [Vercel 문서](https://vercel.com/docs)
 - [Tailwind CSS 문서](https://tailwindcss.com/docs)
+- [Cloudflare Stream 문서](https://developers.cloudflare.com/stream/)
 
 ---
 

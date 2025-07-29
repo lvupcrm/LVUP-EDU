@@ -1,7 +1,9 @@
 import { loadTossPayments } from '@tosspayments/payment-sdk'
+import { validateClientEnv } from './env-validation'
 
-// 토스페이먼츠 클라이언트 키
-const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!
+// 토스페이먼츠 클라이언트 키 (환경 변수 검증)
+const env = validateClientEnv()
+const clientKey = env.NEXT_PUBLIC_TOSS_CLIENT_KEY
 
 // 토스페이먼츠 SDK 로드
 export const getTossPayments = async () => {

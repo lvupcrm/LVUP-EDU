@@ -18,23 +18,29 @@ interface InstructorProfile {
 
 async function getInstructor(id: string): Promise<InstructorProfile | null> {
   try {
-    console.log('Fetching instructor with ID:', id)
+    // Development logging only
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Fetching instructor with ID:', id)
+    }
+    
     const response = await fetch(`http://localhost:8000/api/v1/instructors/${id}`, {
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
     })
     
-    console.log('Response status:', response.status)
-    
     if (response.ok) {
       const data = await response.json()
-      console.log('Instructor data received:', data.user.name)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Instructor data received for:', data.user?.name || 'Unknown')
+      }
       return data
     }
     
     return null
   } catch (error) {
-    console.error('Failed to fetch instructor:', error)
+    // Always log errors but sanitize in production
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Failed to fetch instructor:', errorMessage)
     return null
   }
 }
