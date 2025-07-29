@@ -54,12 +54,12 @@ export default async function AdminCoursesPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil((count || 0) / limit)
 
   // 통계
-  const { data: publishedCount } = await supabase
+  const { count: publishedCount } = await supabase
     .from('courses')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'PUBLISHED')
 
-  const { data: draftCount } = await supabase
+  const { count: draftCount } = await supabase
     .from('courses')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'DRAFT')
@@ -87,11 +87,11 @@ export default async function AdminCoursesPage({ searchParams }: PageProps) {
           </div>
           <div className="bg-white rounded-lg shadow-soft p-4">
             <p className="text-sm text-gray-600">공개된 코스</p>
-            <p className="text-2xl font-bold text-gray-900">{publishedCount?.count || 0}</p>
+            <p className="text-2xl font-bold text-gray-900">{publishedCount || 0}</p>
           </div>
           <div className="bg-white rounded-lg shadow-soft p-4">
             <p className="text-sm text-gray-600">임시저장</p>
-            <p className="text-2xl font-bold text-gray-900">{draftCount?.count || 0}</p>
+            <p className="text-2xl font-bold text-gray-900">{draftCount || 0}</p>
           </div>
         </div>
 
