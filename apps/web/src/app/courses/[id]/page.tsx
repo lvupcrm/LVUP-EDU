@@ -341,7 +341,7 @@ export default async function CoursePage({ params }: PageProps) {
                 ) : (
                   <>
                     <Link
-                      href={`/payment?courseId=${course.id}`}
+                      href={`/payment/${course.id}`}
                       className="btn-primary w-full justify-center mb-3"
                     >
                       수강 신청하기
