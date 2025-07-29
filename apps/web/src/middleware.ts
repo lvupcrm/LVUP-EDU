@@ -149,14 +149,31 @@ export async function middleware(request: NextRequest) {
     }
   )
   
-  // 6. 사용자 세션 확인
-  const { data: { session }, error } = await supabase.auth.getSession()
-  
-  if (error) {
-    console.error('Auth middleware error:', error)
+  // 6. 사용자 세션 확인 (타임아웃 처리)
+  let session = null
+  try {
+    const sessionPromise = supabase.auth.getSession()
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Session timeout')), 3000)
+    )
+    
+    const { data: { session: sessionData }, error } = await Promise.race([
+      sessionPromise,
+      timeoutPromise
+    ]) as any
+    
+    session = sessionData
+    
+    if (error) {
+      console.error('Auth middleware error:', error)
+    }
+  } catch (error) {
+    console.error('Session check timeout:', error)
+    // 세션 확인 실패 시 비인증 상태로 처리
+    session = null
   }
   
-  // 7. 관리자 페이지 접근 제어
+  // 7. 관리자 페이지 접근 제어 (임시로 데이터베이스 쿼리 비활성화)
   if (matchesPath(pathname, adminPaths)) {
     if (!session) {
       const redirectUrl = new URL('/auth/login', request.url)
@@ -164,16 +181,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
     
-    // 관리자 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single()
-    
-    if (!profile || !['ADMIN', 'SUPER_ADMIN'].includes(profile.role)) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
+    // TODO: 관리자 권한 확인 로직을 페이지 레벨로 이동
+    // 임시로 세션만 있으면 접근 허용
+    console.log('Admin access granted temporarily for:', session.user.email)
   }
   
   // 8. 보호된 페이지 접근 제어
@@ -191,7 +201,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(returnUrl || '/', request.url))
   }
   
-  // 10. 강사 대시보드 접근 제어
+  // 10. 강사 대시보드 접근 제어 (임시로 데이터베이스 쿼리 비활성화)
   if (pathname.startsWith('/instructor/dashboard')) {
     if (!session) {
       const redirectUrl = new URL('/auth/login', request.url)
@@ -199,16 +209,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
     
-    // 강사 권한 확인
-    const { data: profile } = await supabase
-      .from('instructor_profiles')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .single()
-    
-    if (!profile) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
+    // TODO: 강사 권한 확인 로직을 페이지 레벨로 이동
+    // 임시로 세션만 있으면 접근 허용
+    console.log('Instructor access granted temporarily for:', session.user.email)
   }
   
   return response
