@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
@@ -15,6 +15,27 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  useEffect(() => {
+    // Supabase 초기화 확인
+    const checkSupabase = async () => {
+      try {
+        if (supabase) {
+          // 간단한 연결 테스트
+          await supabase.auth.getSession()
+          setIsInitialized(true)
+        } else {
+          setError('인증 서비스를 초기화할 수 없습니다.')
+        }
+      } catch (err) {
+        console.error('Supabase initialization error:', err)
+        setError('인증 서비스 연결에 문제가 있습니다.')
+      }
+    }
+    
+    checkSupabase()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,6 +43,12 @@ export default function LoginPage() {
     setError('')
 
     try {
+      // Supabase 클라이언트 확인
+      if (!supabase) {
+        setError('인증 서비스에 연결할 수 없습니다.')
+        return
+      }
+
       // Supabase 로그인
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
@@ -39,6 +66,7 @@ export default function LoginPage() {
       router.push('/')
       router.refresh()
     } catch (err) {
+      console.error('Login error:', err)
       setError('로그인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
@@ -151,7 +179,7 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isInitialized}
               className="btn-primary w-full justify-center py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -159,6 +187,8 @@ export default function LoginPage() {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   로그인 중...
                 </div>
+              ) : !isInitialized ? (
+                '초기화 중...'
               ) : (
                 '로그인'
               )}
