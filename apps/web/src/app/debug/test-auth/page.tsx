@@ -36,6 +36,7 @@ export default function TestAuthPage() {
         }
 
         // 2. 새 계정 생성
+        console.log('Creating new test account...');
         const { data: newUser, error } = await client.auth.signUp({
           email: testAccount.email,
           password: testAccount.password,
@@ -47,8 +48,11 @@ export default function TestAuthPage() {
           }
         })
 
+        console.log('SignUp result:', { data: newUser, error });
+
         if (error) {
-          throw error
+          console.error('SignUp error details:', error);
+          throw new Error(`SignUp failed: ${error.message} (Code: ${error.status})`);
         }
 
         return { type: 'new', user: newUser.user }
