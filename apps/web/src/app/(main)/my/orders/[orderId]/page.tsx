@@ -73,7 +73,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       }
 
       setUser(currentUser)
-      await fetchOrderDetail()
+      await fetchOrderDetailForUser(currentUser)
     } catch (error: any) {
       console.error('Authentication check failed:', error)
       setError(error.message)
@@ -81,25 +81,77 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     }
   }
 
-  const fetchOrderDetail = async () => {
+  const fetchOrderDetailForUser = async (currentUser: any) => {
     try {
-      setIsLoading(true)
-      setError(null)
-
-      const response = await fetch(`/api/orders/${params.orderId}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || '주문 상세 정보를 불러오는데 실패했습니다.')
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error('Supabase 클라이언트를 초기화할 수 없습니다.')
       }
 
-      setOrder(data.order)
+      // 직접 Supabase에서 주문 상세 정보 조회
+      const { data: order, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          order_id,
+          amount,
+          original_amount,
+          discount_amount,
+          status,
+          payment_method,
+          payment_key,
+          created_at,
+          paid_at,
+          courses (
+            id,
+            title,
+            description,
+            thumbnail,
+            instructor_profiles (
+              user:users (
+                name
+              )
+            )
+          ),
+          payments (
+            id,
+            method,
+            amount,
+            status,
+            approved_at,
+            raw_data
+          )
+        `)
+        .eq('id', params.orderId)
+        .eq('user_id', currentUser.id)
+        .single()
+
+      if (error) {
+        console.error('Order detail fetch error:', error)
+        throw new Error('주문 정보를 찾을 수 없습니다.')
+      }
+
+      if (!order) {
+        throw new Error('주문 정보를 찾을 수 없습니다.')
+      }
+
+      setOrder(order)
     } catch (error: any) {
       console.error('Failed to fetch order detail:', error)
       setError(error.message)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fetchOrderDetail = async () => {
+    if (!user) {
+      setError('사용자 인증이 필요합니다.')
+      return
+    }
+    
+    await fetchOrderDetailForUser(user)
   }
 
   const getStatusIcon = (status: string) => {

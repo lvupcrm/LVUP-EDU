@@ -50,7 +50,9 @@ export default function OrderHistoryPage() {
       }
 
       setUser(currentUser)
-      await fetchOrders()
+      
+      // 사용자 설정 후 주문 내역 가져오기
+      await fetchOrdersForUser(currentUser)
     } catch (error: any) {
       console.error('Authentication check failed:', error)
       setError(error.message)
@@ -58,26 +60,55 @@ export default function OrderHistoryPage() {
     }
   }
 
-  const fetchOrders = async () => {
+  const fetchOrdersForUser = async (currentUser: any) => {
     try {
-      setIsLoading(true)
-      setError(null)
-
-      // userId는 서버에서 인증된 사용자로부터 가져옴
-      const response = await fetch('/api/orders')
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || '주문 내역을 불러오는데 실패했습니다.')
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error('Supabase 클라이언트를 초기화할 수 없습니다.')
       }
 
-      setOrders(data.orders)
+      // 직접 Supabase에서 주문 내역 조회
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          order_id,
+          amount,
+          status,
+          payment_method,
+          created_at,
+          paid_at,
+          courses (
+            id,
+            title,
+            thumbnail
+          )
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Orders fetch error:', error)
+        throw new Error('주문 내역을 불러오는데 실패했습니다.')
+      }
+
+      setOrders(orders || [])
     } catch (error: any) {
       console.error('Failed to fetch orders:', error)
       setError(error.message)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fetchOrders = async () => {
+    if (!user) {
+      setError('사용자 인증이 필요합니다.')
+      return
+    }
+    
+    await fetchOrdersForUser(user)
   }
 
   const getStatusIcon = (status: string) => {
