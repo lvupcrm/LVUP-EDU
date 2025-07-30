@@ -10,6 +10,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { CartIcon } from '@/components/cart/CartIcon';
 // Supabase는 동적 import로 사용하여 hydration 문제 방지
 
 const navigation: Array<{
@@ -259,6 +260,7 @@ export function Header() {
             <div className='h-8 w-20 bg-gray-200 rounded animate-pulse' />
           ) : user ? (
             <div className='flex items-center gap-x-4'>
+              <CartIcon />
               <NotificationBell />
               <Link
                 href='/my/courses'

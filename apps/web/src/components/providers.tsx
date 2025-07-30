@@ -3,6 +3,7 @@
 import React from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { CartProvider } from '@/contexts/CartContext';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -118,8 +119,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
       <NotificationProvider>
-        {children}
-        <Toaster />
+        <CartProvider>
+          {children}
+          <Toaster />
+        </CartProvider>
       </NotificationProvider>
     </ErrorBoundary>
   );

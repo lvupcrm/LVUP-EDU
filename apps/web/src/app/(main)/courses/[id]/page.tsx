@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { LessonList } from '@/components/course/LessonList'
+import { AddToCartButton } from '@/components/cart/AddToCartButton'
 
 interface PageProps {
   params: {
@@ -346,9 +347,14 @@ export default async function CoursePage({ params }: PageProps) {
                     >
                       수강 신청하기
                     </Link>
-                    <button className="btn-outline w-full justify-center">
-                      장바구니에 담기
-                    </button>
+                    <AddToCartButton
+                      courseId={course.id}
+                      courseName={course.title}
+                      variant="outline"
+                      size="lg"
+                      className="w-full"
+                      requireAuth={true}
+                    />
                   </>
                 )}
 
