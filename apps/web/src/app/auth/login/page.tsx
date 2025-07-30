@@ -62,7 +62,50 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        console.log('Login successful, redirecting...');
+        console.log('Login successful, checking user profile...');
+        
+        // 로그인 성공 후 프로필 존재 여부 확인
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profileError && profileError.code === 'PGRST116') {
+            // 프로필이 없는 경우 자동 생성
+            console.log('User profile not found, creating one...');
+            const { error: createError } = await supabase
+              .from('users')
+              .insert({
+                id: data.user.id,
+                email: data.user.email,
+                name: data.user.user_metadata?.full_name || 
+                      data.user.user_metadata?.name || 
+                      data.user.email?.split('@')[0] || 
+                      '사용자',
+                role: 'STUDENT',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+
+            if (createError) {
+              console.error('Failed to create user profile:', createError);
+              // 프로필 생성 실패해도 로그인은 성공 처리
+            } else {
+              console.log('User profile created successfully');
+            }
+          } else if (profileError) {
+            console.error('Profile check error:', profileError);
+            // 프로필 확인 실패해도 로그인은 성공 처리
+          } else {
+            console.log('User profile already exists');
+          }
+        } catch (profileErr) {
+          console.error('Profile handling error:', profileErr);
+          // 프로필 관련 오류가 있어도 로그인은 성공 처리
+        }
+
         // 로그인 성공
         router.push('/');
         router.refresh();

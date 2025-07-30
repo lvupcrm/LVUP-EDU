@@ -193,39 +193,66 @@ export default function SignUpPage() {
             emailConfirmed: signUpResult.user.email_confirmed_at,
           });
 
-          // 2. users 테이블에 추가 정보 저장 (이메일 확인 여부와 관계없이 실행)
-          console.log('Creating user profile...');
-          const profileData = {
-            id: signUpResult.user.id,
-            email: formData.email,
-            name: formData.name,
-            role: 'STUDENT', // 기본 역할
-            user_type: formData.userType, // 사용자 타입 추가
-            nickname: formData.nickname || null,
-            phone: formData.phone || null,
-          };
-          console.log('Profile data to insert:', profileData);
-
+          // 2. users 테이블에 추가 정보 저장 (트리거가 실패했을 경우를 대비)
+          console.log('Checking if user profile exists...');
           const profileResult = await safeSupabaseOperation(async client => {
-            const { error: profileError } = await client
+            // 먼저 프로필이 이미 존재하는지 확인
+            const { data: existingProfile, error: checkError } = await client
               .from('users')
-              .insert(profileData);
+              .select('id')
+              .eq('id', signUpResult.user.id)
+              .single();
 
-            if (profileError) {
-              console.error('Profile creation error:', profileError);
-              console.error('Profile error details:', {
-                message: profileError.message,
-                details: profileError.details,
-                hint: profileError.hint,
-                code: profileError.code,
-              });
-              // Auth 사용자는 생성되었지만 프로필은 실패한 경우에도 계속 진행
-              // 나중에 로그인 시 프로필을 다시 생성할 수 있음
-            } else {
-              console.log('Profile created successfully');
+            if (checkError && checkError.code !== 'PGRST116') {
+              // PGRST116 = "No rows found" (예상되는 에러)
+              console.error('Profile check error:', checkError);
+              return false;
             }
 
-            return !profileError;
+            if (existingProfile) {
+              console.log('User profile already exists (created by trigger)');
+              // 추가 정보만 업데이트
+              const { error: updateError } = await client
+                .from('users')
+                .update({
+                  user_type: formData.userType,
+                  nickname: formData.nickname || null,
+                  phone: formData.phone || null,
+                })
+                .eq('id', signUpResult.user.id);
+
+              if (updateError) {
+                console.error('Profile update error:', updateError);
+                return false;
+              } else {
+                console.log('Profile updated with additional info');
+                return true;
+              }
+            } else {
+              // 프로필이 없는 경우 새로 생성
+              console.log('Creating user profile...');
+              const profileData = {
+                id: signUpResult.user.id,
+                email: formData.email,
+                name: formData.name,
+                role: 'STUDENT', // 기본 역할
+                user_type: formData.userType, // 사용자 타입 추가
+                nickname: formData.nickname || null,
+                phone: formData.phone || null,
+              };
+
+              const { error: profileError } = await client
+                .from('users')
+                .insert(profileData);
+
+              if (profileError) {
+                console.error('Profile creation error:', profileError);
+                return false;
+              } else {
+                console.log('Profile created successfully');
+                return true;
+              }
+            }
           });
 
           // 이메일 확인이 필요한지 체크
