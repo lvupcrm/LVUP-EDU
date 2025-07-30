@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Sentry from '@sentry/node';
-import { ProfilingIntegration } from '@sentry/profiling-node';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 @Injectable()
 export class SentryService implements OnModuleInit {
@@ -42,12 +42,14 @@ export class SentryService implements OnModuleInit {
         };
         
         // Filter out known non-critical errors
-        if (error?.message?.includes('ECONNRESET')) {
-          return null;
-        }
-        
-        if (error?.message?.includes('cancelled')) {
-          return null;
+        if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+          if (error.message.includes('ECONNRESET')) {
+            return null;
+          }
+          
+          if (error.message.includes('cancelled')) {
+            return null;
+          }
         }
         
         return event;
@@ -55,15 +57,9 @@ export class SentryService implements OnModuleInit {
       
       // Integrations
       integrations: [
-        new Sentry.Integrations.Http({ tracing: true }),
-        new Sentry.Integrations.Express({ app: undefined }),
-        new Sentry.Integrations.OnUncaughtException({
-          exitEvenIfOtherHandlersAreRegistered: false,
-        }),
-        new Sentry.Integrations.OnUnhandledRejection({
-          mode: 'warn',
-        }),
-        new ProfilingIntegration(),
+        Sentry.httpIntegration(),
+        Sentry.expressIntegration(),
+        nodeProfilingIntegration(),
       ],
       
       // Initial scope
@@ -106,29 +102,23 @@ export class SentryService implements OnModuleInit {
 
   // Transaction helpers
   startTransaction(name: string, op: string) {
-    return Sentry.startTransaction({ name, op });
+    return Sentry.startSpan({ name, op }, () => {});
   }
 
   // Performance monitoring
-  withTransaction<T>(
+  async withTransaction<T>(
     name: string,
     op: string,
-    callback: (transaction: Sentry.Transaction) => Promise<T>
+    callback: () => Promise<T>
   ): Promise<T> {
-    const transaction = this.startTransaction(name, op);
-    
-    return callback(transaction)
-      .then(result => {
-        transaction.setStatus('ok');
+    return Sentry.startSpan({ name, op }, async () => {
+      try {
+        const result = await callback();
         return result;
-      })
-      .catch(error => {
-        transaction.setStatus('internal_error');
+      } catch (error) {
         this.captureException(error);
         throw error;
-      })
-      .finally(() => {
-        transaction.finish();
-      });
+      }
+    });
   }
 }

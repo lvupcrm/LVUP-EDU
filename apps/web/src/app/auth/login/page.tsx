@@ -22,10 +22,14 @@ export default function LoginPage() {
 
     try {
       console.log('Starting login process...');
-      
+
       // 안전한 Supabase 동적 import
-      const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation, getSupabaseError } =
-        await import('@/lib/supabase');
+      const {
+        getSupabaseClient,
+        isSupabaseReady,
+        safeSupabaseOperation,
+        getSupabaseError,
+      } = await import('@/lib/supabase');
 
       if (!isSupabaseReady()) {
         const supabaseError = getSupabaseError();
@@ -42,7 +46,7 @@ export default function LoginPage() {
       const loginResult = await safeSupabaseOperation(async client => {
         console.log('Calling signInWithPassword with:', {
           email: formData.email,
-          passwordLength: formData.password.length
+          passwordLength: formData.password.length,
         });
 
         const { data, error: signInError } =
@@ -55,7 +59,7 @@ export default function LoginPage() {
           data: data,
           user: data?.user,
           session: data?.session,
-          error: signInError
+          error: signInError,
         });
 
         console.log('Login attempt result:', {
@@ -65,7 +69,7 @@ export default function LoginPage() {
           userEmail: data?.user?.email,
           userConfirmed: data?.user?.email_confirmed_at,
           errorMessage: signInError?.message,
-          errorCode: signInError?.status
+          errorCode: signInError?.status,
         });
 
         if (signInError) {
@@ -74,8 +78,8 @@ export default function LoginPage() {
             signInError.message === 'Invalid login credentials'
               ? '이메일 또는 비밀번호가 올바르지 않습니다.'
               : signInError.message.includes('Email not confirmed')
-              ? '이메일 확인이 필요합니다. 가입 시 받은 인증 메일을 확인해주세요.'
-              : `로그인 오류: ${signInError.message}`
+                ? '이메일 확인이 필요합니다. 가입 시 받은 인증 메일을 확인해주세요.'
+                : `로그인 오류: ${signInError.message}`
           );
         }
 
@@ -94,7 +98,10 @@ export default function LoginPage() {
         router.refresh();
       } else {
         console.error('Login failed - no user returned but no error thrown');
-        console.error('LoginResult details:', JSON.stringify(loginResult, null, 2));
+        console.error(
+          'LoginResult details:',
+          JSON.stringify(loginResult, null, 2)
+        );
         setError('로그인에 실패했습니다. 계정 정보를 확인해주세요.');
       }
     } catch (err) {
@@ -112,6 +119,46 @@ export default function LoginPage() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  const handleKakaoLogin = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { getSupabaseClient, isSupabaseReady } = await import(
+        '@/lib/supabase'
+      );
+
+      if (!isSupabaseReady()) {
+        setError('인증 서비스 연결 실패');
+        return;
+      }
+
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        setError('인증 서비스를 초기화할 수 없습니다.');
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('Kakao login error:', error);
+        setError('카카오 로그인 중 오류가 발생했습니다.');
+      }
+      // 성공 시 자동으로 카카오 로그인 페이지로 리다이렉트됩니다
+    } catch (err) {
+      console.error('Kakao login error:', err);
+      setError('카카오 로그인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -228,6 +275,35 @@ export default function LoginPage() {
             ) : (
               '로그인'
             )}
+          </button>
+
+          <div className='relative'>
+            <div className='absolute inset-0 flex items-center'>
+              <div className='w-full border-t border-gray-300' />
+            </div>
+            <div className='relative flex justify-center text-sm'>
+              <span className='px-2 bg-gray-50 text-gray-500'>또는</span>
+            </div>
+          </div>
+
+          <button
+            type='button'
+            onClick={handleKakaoLogin}
+            disabled={loading}
+            className='w-full bg-[#FEE500] text-black py-3 px-4 rounded-lg hover:bg-[#FDD835] font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2'
+          >
+            <svg
+              className='w-5 h-5'
+              viewBox='0 0 24 24'
+              fill='none'
+              xmlns='http://www.w3.org/2000/svg'
+            >
+              <path
+                d='M12 3C6.48 3 2 6.48 2 11.04C2 14.04 3.84 16.64 6.5 17.86V21.96L10.44 18.24C10.96 18.32 11.48 18.36 12 18.36C17.52 18.36 22 14.88 22 11.04C22 6.48 17.52 3 12 3Z'
+                fill='currentColor'
+              />
+            </svg>
+            <span>카카오로 로그인</span>
           </button>
 
           <div className='text-center'>

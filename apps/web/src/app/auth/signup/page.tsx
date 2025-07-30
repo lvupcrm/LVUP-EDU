@@ -40,6 +40,46 @@ export default function SignUpPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const handleKakaoSignUp = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { getSupabaseClient, isSupabaseReady } = await import(
+        '@/lib/supabase'
+      );
+
+      if (!isSupabaseReady()) {
+        setError('인증 서비스 연결 실패');
+        return;
+      }
+
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        setError('인증 서비스를 초기화할 수 없습니다.');
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=/auth/complete-profile`,
+        },
+      });
+
+      if (error) {
+        console.error('Kakao signup error:', error);
+        setError('카카오 회원가입 중 오류가 발생했습니다.');
+      }
+      // 성공 시 자동으로 카카오 로그인 페이지로 리다이렉트됩니다
+    } catch (err) {
+      console.error('Kakao signup error:', err);
+      setError('카카오 회원가입 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -75,7 +115,7 @@ export default function SignUpPage() {
       console.log('Step 1 validation passed:', {
         email: formData.email,
         passwordLength: formData.password.length,
-        name: formData.name
+        name: formData.name,
       });
 
       setError('');
@@ -96,36 +136,45 @@ export default function SignUpPage() {
 
       try {
         // 안전한 Supabase 동적 import
-        const { getSupabaseClient, isSupabaseReady, safeSupabaseOperation, getSupabaseError } = await import('@/lib/supabase');
+        const {
+          getSupabaseClient,
+          isSupabaseReady,
+          safeSupabaseOperation,
+          getSupabaseError,
+        } = await import('@/lib/supabase');
 
         if (!isSupabaseReady()) {
           const supabaseError = getSupabaseError();
           console.error('Supabase not ready:', supabaseError);
-          setError(`인증 서비스 연결 실패: ${supabaseError?.message || '알 수 없는 오류'}`);
+          setError(
+            `인증 서비스 연결 실패: ${supabaseError?.message || '알 수 없는 오류'}`
+          );
           return;
         }
 
         console.log('Starting signup process for:', formData.email);
-        
+
         // 1. 안전한 Supabase Auth 회원가입
-        const signUpResult = await safeSupabaseOperation(async (client) => {
+        const signUpResult = await safeSupabaseOperation(async client => {
           console.log('Calling signUp with:', {
             email: formData.email,
             passwordLength: formData.password.length,
             name: formData.name,
-            userType: formData.userType
+            userType: formData.userType,
           });
 
-          const { data: authData, error: authError } = await client.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-              data: {
-                name: formData.name,
-                user_type: formData.userType,
+          const { data: authData, error: authError } = await client.auth.signUp(
+            {
+              email: formData.email,
+              password: formData.password,
+              options: {
+                data: {
+                  name: formData.name,
+                  user_type: formData.userType,
+                },
               },
-            },
-          });
+            }
+          );
 
           console.log('SignUp response:', {
             hasData: !!authData,
@@ -135,7 +184,7 @@ export default function SignUpPage() {
             userConfirmed: authData?.user?.email_confirmed_at,
             error: authError,
             errorMessage: authError?.message,
-            errorStatus: authError?.status
+            errorStatus: authError?.status,
           });
 
           if (authError) {
@@ -144,11 +193,19 @@ export default function SignUpPage() {
               throw new Error('이미 가입된 이메일입니다.');
             } else if (authError.message.includes('Invalid email')) {
               throw new Error('올바른 이메일 주소를 입력해주세요.');
-            } else if (authError.message.includes('Password should be at least')) {
+            } else if (
+              authError.message.includes('Password should be at least')
+            ) {
               throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
-            } else if (authError.message.includes('Unable to validate email address')) {
+            } else if (
+              authError.message.includes('Unable to validate email address')
+            ) {
               throw new Error('이메일 주소 형식이 올바르지 않습니다.');
-            } else if (authError.message.includes('Password should be at least 6 characters')) {
+            } else if (
+              authError.message.includes(
+                'Password should be at least 6 characters'
+              )
+            ) {
               throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
             } else {
               throw new Error(`회원가입 실패: ${authError.message}`);
@@ -162,7 +219,9 @@ export default function SignUpPage() {
 
         if (signUpResult === null) {
           console.error('safeSupabaseOperation returned null for signup');
-          setError('인증 서비스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+          setError(
+            '인증 서비스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+          );
           return;
         }
 
@@ -170,7 +229,7 @@ export default function SignUpPage() {
           console.log('Signup result:', {
             user: signUpResult.user,
             session: signUpResult.session,
-            emailConfirmed: signUpResult.user.email_confirmed_at
+            emailConfirmed: signUpResult.user.email_confirmed_at,
           });
 
           // 2. users 테이블에 추가 정보 저장 (이메일 확인 여부와 관계없이 실행)
@@ -186,8 +245,10 @@ export default function SignUpPage() {
           };
           console.log('Profile data to insert:', profileData);
 
-          const profileResult = await safeSupabaseOperation(async (client) => {
-            const { error: profileError } = await client.from('users').insert(profileData);
+          const profileResult = await safeSupabaseOperation(async client => {
+            const { error: profileError } = await client
+              .from('users')
+              .insert(profileData);
 
             if (profileError) {
               console.error('Profile creation error:', profileError);
@@ -195,7 +256,7 @@ export default function SignUpPage() {
                 message: profileError.message,
                 details: profileError.details,
                 hint: profileError.hint,
-                code: profileError.code
+                code: profileError.code,
               });
               // Auth 사용자는 생성되었지만 프로필은 실패한 경우에도 계속 진행
               // 나중에 로그인 시 프로필을 다시 생성할 수 있음
@@ -209,15 +270,23 @@ export default function SignUpPage() {
           // 이메일 확인이 필요한지 체크
           if (!signUpResult.user.email_confirmed_at && !signUpResult.session) {
             // 이메일 확인이 필요한 경우 - welcome 페이지로 이동하되 이메일 확인 안내 표시
-            console.log('Email confirmation required, redirecting to welcome with message');
-            setSuccess('회원가입이 완료되었습니다! 잠시 후 환영 페이지로 이동합니다...');
+            console.log(
+              'Email confirmation required, redirecting to welcome with message'
+            );
+            setSuccess(
+              '회원가입이 완료되었습니다! 잠시 후 환영 페이지로 이동합니다...'
+            );
             setTimeout(() => {
               router.push('/auth/welcome?emailConfirmation=required');
             }, 1500);
           } else {
             // 이메일 확인이 불필요하거나 이미 확인된 경우
-            console.log('Email confirmation not required, redirecting to welcome');
-            setSuccess('회원가입이 완료되었습니다! 잠시 후 환영 페이지로 이동합니다...');
+            console.log(
+              'Email confirmation not required, redirecting to welcome'
+            );
+            setSuccess(
+              '회원가입이 완료되었습니다! 잠시 후 환영 페이지로 이동합니다...'
+            );
             setTimeout(() => {
               router.push('/auth/welcome');
             }, 1500);
@@ -227,7 +296,11 @@ export default function SignUpPage() {
         }
       } catch (err) {
         console.error('Signup error:', err);
-        setError(err instanceof Error ? err.message : '회원가입 중 오류가 발생했습니다.');
+        setError(
+          err instanceof Error
+            ? err.message
+            : '회원가입 중 오류가 발생했습니다.'
+        );
         setLoading(false);
       }
       // 성공한 경우 로딩을 유지하여 페이지 이동을 표시
@@ -262,6 +335,38 @@ export default function SignUpPage() {
           </p>
         </div>
 
+        {/* 카카오로 시작하기 버튼 */}
+        <button
+          type='button'
+          onClick={handleKakaoSignUp}
+          disabled={loading}
+          className='w-full bg-[#FEE500] text-black py-3 px-4 rounded-lg hover:bg-[#FDD835] font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2'
+        >
+          <svg
+            className='w-5 h-5'
+            viewBox='0 0 24 24'
+            fill='none'
+            xmlns='http://www.w3.org/2000/svg'
+          >
+            <path
+              d='M12 3C6.48 3 2 6.48 2 11.04C2 14.04 3.84 16.64 6.5 17.86V21.96L10.44 18.24C10.96 18.32 11.48 18.36 12 18.36C17.52 18.36 22 14.88 22 11.04C22 6.48 17.52 3 12 3Z'
+              fill='currentColor'
+            />
+          </svg>
+          <span>카카오로 시작하기</span>
+        </button>
+
+        <div className='relative'>
+          <div className='absolute inset-0 flex items-center'>
+            <div className='w-full border-t border-gray-300' />
+          </div>
+          <div className='relative flex justify-center text-sm'>
+            <span className='px-2 bg-gray-50 text-gray-500'>
+              또는 이메일로 가입하기
+            </span>
+          </div>
+        </div>
+
         {/* 진행 상태 표시 */}
         <div className='flex items-center justify-center space-x-4'>
           <div
@@ -293,7 +398,7 @@ export default function SignUpPage() {
               {error}
             </div>
           )}
-          
+
           {success && (
             <div className='bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm'>
               {success}

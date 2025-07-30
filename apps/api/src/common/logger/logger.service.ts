@@ -197,7 +197,7 @@ export class CustomLoggerService implements LoggerService {
   }
 
   logDatabaseQuery(query: string, duration: number, context: LogContext = {}) {
-    this.debug('Database Query', {
+    this.logger.debug('Database Query', {
       ...context,
       query: query.replace(/\s+/g, ' ').trim(),
       duration,
@@ -213,7 +213,7 @@ export class CustomLoggerService implements LoggerService {
   }
 
   logSecurityEvent(event: string, meta: LogContext = {}) {
-    this.warn(event, {
+    this.logger.warn(event, {
       ...meta,
       type: 'security',
     });
