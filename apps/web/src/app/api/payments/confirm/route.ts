@@ -102,6 +102,59 @@ export async function POST(request: NextRequest) {
       // 수강 등록 실패 시에도 결제는 완료된 상태로 처리
     }
 
+    // 6. 강의 정보 조회 (알림에 사용)
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('title')
+      .eq('id', order.course_id)
+      .single()
+
+    // 7. 결제 성공 알림 생성
+    try {
+      const { error: paymentNotificationError } = await supabase.rpc('create_notification', {
+        target_user_id: order.user_id,
+        notification_type: 'payment_success',
+        notification_title: '결제가 완료되었습니다',
+        notification_message: `${course?.title || '강의'} 결제가 성공적으로 완료되었습니다. 이제 수강을 시작할 수 있습니다.`,
+        notification_data: {
+          order_id: order.id,
+          course_id: order.course_id,
+          course_title: course?.title,
+          payment_amount: paymentData.totalAmount,
+          payment_method: paymentData.method
+        }
+      })
+
+      if (paymentNotificationError) {
+        console.error('Payment notification error:', paymentNotificationError)
+      }
+    } catch (notificationError) {
+      console.error('Error creating payment notification:', notificationError)
+    }
+
+    // 8. 수강 등록 성공 알림 생성 (수강 등록이 성공한 경우에만)
+    if (!enrollmentError) {
+      try {
+        const { error: enrollmentNotificationError } = await supabase.rpc('create_notification', {
+          target_user_id: order.user_id,
+          notification_type: 'enrollment_success',
+          notification_title: '수강 등록이 완료되었습니다',
+          notification_message: `${course?.title || '강의'} 수강 등록이 완료되었습니다. 지금 바로 학습을 시작해보세요!`,
+          notification_data: {
+            course_id: order.course_id,
+            course_title: course?.title,
+            order_id: order.id
+          }
+        })
+
+        if (enrollmentNotificationError) {
+          console.error('Enrollment notification error:', enrollmentNotificationError)
+        }
+      } catch (notificationError) {
+        console.error('Error creating enrollment notification:', notificationError)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       payment: paymentData,

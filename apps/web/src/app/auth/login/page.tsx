@@ -24,85 +24,50 @@ export default function LoginPage() {
     try {
       console.log('Starting login process...');
 
-      // 안전한 Supabase 동적 import
-      const {
-        getSupabaseClient,
-        isSupabaseReady,
-        safeSupabaseOperation,
-        getSupabaseError,
-      } = await import('@/lib/supabase');
-
-      if (!isSupabaseReady()) {
-        const supabaseError = getSupabaseError();
-        console.error('Supabase not ready for login:', supabaseError);
-        setError(
-          `인증 서비스 연결 실패: ${supabaseError?.message || '알 수 없는 오류'}`
-        );
+      // Supabase import
+      const { getSupabaseClient } = await import('@/lib/supabase');
+      
+      const supabase = getSupabaseClient();
+      
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        setError('인증 서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
 
       console.log('Attempting login with email:', formData.email);
 
-      // 안전한 로그인 시도
-      const loginResult = await safeSupabaseOperation(async client => {
-        console.log('Calling signInWithPassword with:', {
-          email: formData.email,
-          passwordLength: formData.password.length,
-        });
-
-        const { data, error: signInError } =
-          await client.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password,
-          });
-
-        console.log('Raw login response:', {
-          data: data,
-          user: data?.user,
-          session: data?.session,
-          error: signInError,
-        });
-
-        console.log('Login attempt result:', {
-          hasData: !!data,
-          hasUser: !!data?.user,
-          hasSession: !!data?.session,
-          userEmail: data?.user?.email,
-          userConfirmed: data?.user?.email_confirmed_at,
-          errorMessage: signInError?.message,
-          errorCode: signInError?.status,
-        });
-
-        if (signInError) {
-          console.error('Login error details:', signInError);
-          throw new Error(
-            signInError.message === 'Invalid login credentials'
-              ? '이메일 또는 비밀번호가 올바르지 않습니다.'
-              : signInError.message.includes('Email not confirmed')
-                ? '이메일 확인이 필요합니다. 가입 시 받은 인증 메일을 확인해주세요.'
-                : `로그인 오류: ${signInError.message}`
-          );
-        }
-
-        return data;
+      // 로그인 시도
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      console.log('Final loginResult:', loginResult);
+      console.log('Login response:', {
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        error: signInError?.message,
+      });
 
-      if (loginResult === null) {
-        console.error('safeSupabaseOperation returned null');
-        setError('인증 서비스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-      } else if (loginResult?.user) {
+      if (signInError) {
+        console.error('Login error:', signInError);
+        if (signInError.message === 'Invalid login credentials') {
+          setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError('이메일 확인이 필요합니다. 가입 시 받은 인증 메일을 확인해주세요.');
+        } else {
+          setError(`로그인 오류: ${signInError.message}`);
+        }
+        return;
+      }
+
+      if (data?.user) {
         console.log('Login successful, redirecting...');
         // 로그인 성공
         router.push('/');
         router.refresh();
       } else {
-        console.error('Login failed - no user returned but no error thrown');
-        console.error(
-          'LoginResult details:',
-          JSON.stringify(loginResult, null, 2)
-        );
+        console.error('Login failed - no user returned');
         setError('로그인에 실패했습니다. 계정 정보를 확인해주세요.');
       }
     } catch (err) {

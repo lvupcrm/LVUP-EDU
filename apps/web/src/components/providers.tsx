@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Toaster } from '@/components/ui/toaster';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -116,8 +117,10 @@ class ErrorBoundary extends React.Component<
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
-      {children}
-      <Toaster />
+      <NotificationProvider>
+        {children}
+        <Toaster />
+      </NotificationProvider>
     </ErrorBoundary>
   );
 }

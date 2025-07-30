@@ -9,6 +9,7 @@ import {
   Bars3Icon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 // Supabase는 동적 import로 사용하여 hydration 문제 방지
 
 const navigation: Array<{
@@ -258,6 +259,7 @@ export function Header() {
             <div className='h-8 w-20 bg-gray-200 rounded animate-pulse' />
           ) : user ? (
             <div className='flex items-center gap-x-4'>
+              <NotificationBell />
               <Link
                 href='/my/courses'
                 className='text-sm font-medium text-gray-700 hover:text-primary-600'

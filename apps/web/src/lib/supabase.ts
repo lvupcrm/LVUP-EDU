@@ -12,8 +12,8 @@ function createSafeSupabaseClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    console.log('Supabase URL exists:', !!supabaseUrl);
-    console.log('Supabase Key exists:', !!supabaseAnonKey);
+    // console.log('Supabase URL exists:', !!supabaseUrl);
+    // console.log('Supabase Key exists:', !!supabaseAnonKey);
 
     // 환경변수 존재 여부 확인
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -30,14 +30,14 @@ function createSafeSupabaseClient() {
       throw new Error('Environment variables contain placeholder values');
     }
 
-    // URL 형식 검증
-    if (!supabaseUrl.startsWith('https://') || !supabaseUrl.includes('supabase.co')) {
+    // URL 형식 검증 (더 유연하게)
+    if (!supabaseUrl.startsWith('http')) {
       throw new Error('Invalid Supabase URL format');
     }
 
-    console.log('Creating Supabase client...');
+    // console.log('Creating Supabase client...');
     const client = createClient(supabaseUrl, supabaseAnonKey);
-    console.log('Supabase client created successfully');
+    // console.log('Supabase client created successfully');
     
     return client;
   } catch (error) {
