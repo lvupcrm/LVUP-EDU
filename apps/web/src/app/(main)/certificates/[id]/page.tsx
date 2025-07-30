@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClientSafe, fetchCertificateById } from '@/lib/supabase-helpers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowDownTrayIcon as DocumentDownloadIcon, ShareIcon } from '@heroicons/react/24/outline'
@@ -11,35 +11,18 @@ interface PageProps {
 }
 
 export default async function CertificateDetailPage({ params }: PageProps) {
-  // 수료증 정보 가져오기
-  const { data: certificate } = await supabase
-    .from('certificates')
-    .select(`
-      *,
-      user:users(id, name),
-      course:courses(
-        id,
-        title,
-        instructor:instructors(
-          user:users(name)
-        )
-      ),
-      enrollment:enrollments(
-        progress,
-        completed_at,
-        started_at
-      )
-    `)
-    .eq('id', params.id)
-    .single()
+  try {
+    // 수료증 정보 가져오기
+    const certificate = await fetchCertificateById(params.id)
 
-  if (!certificate) {
-    notFound()
-  }
+    if (!certificate) {
+      notFound()
+    }
 
-  // 현재 사용자 확인 (수료증 소유자인지)
-  const { data: { user } } = await supabase.auth.getUser()
-  const isOwner = user?.id === certificate.user_id
+    // 현재 사용자 확인 (수료증 소유자인지)
+    const supabase = getSupabaseClientSafe()
+    const { data: { user } } = await supabase.auth.getUser()
+    const isOwner = user?.id === (certificate as any)?.user_id
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -60,9 +43,9 @@ export default async function CertificateDetailPage({ params }: PageProps) {
               <h1 className="text-3xl font-bold text-gray-900">수료증</h1>
               
               <div className="flex gap-3">
-                {certificate.pdf_url && (
+                {(certificate as any).pdf_url && (
                   <a
-                    href={certificate.pdf_url}
+                    href={(certificate as any).pdf_url}
                     download
                     className="btn-outline"
                   >
@@ -87,7 +70,7 @@ export default async function CertificateDetailPage({ params }: PageProps) {
 
           {/* 수료증 본문 */}
           <div className="bg-white rounded-xl shadow-soft overflow-hidden">
-            <CertificateView certificate={certificate} />
+            <CertificateView certificate={certificate as any} />
           </div>
 
           {/* 검증 정보 */}
@@ -97,11 +80,29 @@ export default async function CertificateDetailPage({ params }: PageProps) {
             </h3>
             <p className="text-sm text-blue-700">
               이 수료증은 LVUP EDU에서 발급한 정식 수료증입니다.<br />
-              수료증 번호: <span className="font-medium">{certificate.certificate_number}</span>
+              수료증 번호: <span className="font-medium">{(certificate as any).certificate_number || 'N/A'}</span>
             </p>
           </div>
         </div>
       </div>
     </div>
   )
+  } catch (error) {
+    console.error('Error loading certificate page:', error)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            오류가 발생했습니다
+          </h1>
+          <p className="text-gray-600 mb-6">
+            수료증을 불러오는 중 문제가 발생했습니다.
+          </p>
+          <Link href="/certificates" className="btn-primary">
+            수료증 목록으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    )
+  }
 }

@@ -133,7 +133,7 @@ export function isValidOrigin(request: NextRequest): boolean {
     process.env.NEXT_PUBLIC_APP_URL,
     'http://localhost:3000',
     'https://lvup-edu.vercel.app'
-  ].filter(Boolean)
+  ].filter((origin): origin is string => Boolean(origin))
   
   // For same-origin requests
   if (!origin && !referer) {

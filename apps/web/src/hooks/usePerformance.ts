@@ -15,24 +15,24 @@ import { logger } from '@/lib/logger'
 export function useWebVitals() {
   useEffect(() => {
     // Dynamically import web-vitals to avoid SSR issues
-    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-      getCLS((metric) => {
+    import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
+      onCLS((metric: any) => {
         logger.info('CLS', { value: metric.value, rating: metric.rating })
       })
       
-      getFID((metric) => {
+      onFID((metric: any) => {
         logger.info('FID', { value: metric.value, rating: metric.rating })
       })
       
-      getFCP((metric) => {
+      onFCP((metric: any) => {
         logger.info('FCP', { value: metric.value, rating: metric.rating })
       })
       
-      getLCP((metric) => {
+      onLCP((metric: any) => {
         logger.info('LCP', { value: metric.value, rating: metric.rating })
       })
       
-      getTTFB((metric) => {
+      onTTFB((metric: any) => {
         logger.info('TTFB', { value: metric.value, rating: metric.rating })
       })
     })
@@ -118,9 +118,10 @@ export function useMemoryMonitoring() {
 // Network performance monitoring
 export function useNetworkPerformance() {
   const measureNetworkSpeed = useCallback(async () => {
-    if (!navigator.connection) return null
+    // Type guard for navigator.connection (not standard API)
+    const connection = (navigator as any).connection;
+    if (!connection) return null
 
-    const connection = navigator.connection
     const networkInfo = {
       effectiveType: connection.effectiveType,
       downlink: connection.downlink,
@@ -136,10 +137,11 @@ export function useNetworkPerformance() {
     measureNetworkSpeed()
 
     // Listen for network changes
-    if (navigator.connection) {
-      navigator.connection.addEventListener('change', measureNetworkSpeed)
+    const connection = (navigator as any).connection;
+    if (connection) {
+      connection.addEventListener('change', measureNetworkSpeed)
       return () => {
-        navigator.connection?.removeEventListener('change', measureNetworkSpeed)
+        connection?.removeEventListener('change', measureNetworkSpeed)
       }
     }
   }, [measureNetworkSpeed])

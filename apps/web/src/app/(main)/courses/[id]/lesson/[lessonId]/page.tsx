@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import { VideoPlayer } from '@/components/video/VideoPlayer'
 import Link from 'next/link'
@@ -12,6 +12,12 @@ interface PageProps {
 }
 
 export default async function LessonPage({ params }: PageProps) {
+  const supabase = getSupabaseClient()
+  
+  if (!supabase) {
+    throw new Error('Supabase client not available')
+  }
+  
   // 현재 사용자 확인
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -84,6 +90,12 @@ export default async function LessonPage({ params }: PageProps) {
     .eq('lesson_id', params.lessonId)
     .single()
 
+  // 모든 레슨의 진도 정보 가져오기 (사이드바용)
+  const { data: allProgress } = await supabase
+    .from('lesson_progress')
+    .select('lesson_id, status')
+    .eq('enrollment_id', enrollment.id)
+
   // 이전/다음 레슨 찾기
   const currentIndex = allLessons?.findIndex(l => l.id === params.lessonId) ?? -1
   const prevLesson = currentIndex > 0 ? allLessons![currentIndex - 1] : null
@@ -128,6 +140,7 @@ export default async function LessonPage({ params }: PageProps) {
                       .upsert({
                         enrollment_id: enrollment.id,
                         lesson_id: params.lessonId,
+                        watch_time: seconds, // watch_time 필드로 통일
                         watched_seconds: seconds,
                         total_seconds: lesson.video_duration || lesson.duration * 60,
                         progress_percentage: percentage,
@@ -138,11 +151,17 @@ export default async function LessonPage({ params }: PageProps) {
                 }}
                 onComplete={async () => {
                   // 완료 처리
+                  const totalSeconds = lesson.video_duration || lesson.duration * 60
                   await supabase
                     .from('lesson_progress')
                     .upsert({
                       enrollment_id: enrollment.id,
                       lesson_id: params.lessonId,
+                      watch_time: totalSeconds, // 전체 시간으로 설정
+                      watched_seconds: totalSeconds,
+                      total_seconds: totalSeconds,
+                      progress_percentage: 100,
+                      last_position: totalSeconds,
                       status: 'COMPLETED',
                       completed_at: new Date().toISOString(),
                       completion_count: (progress?.completion_count || 0) + 1
@@ -221,7 +240,8 @@ export default async function LessonPage({ params }: PageProps) {
               <div className="space-y-2 max-h-[600px] overflow-y-auto">
                 {allLessons?.map((l, index) => {
                   const isActive = l.id === params.lessonId
-                  const isCompleted = false // TODO: 진도 정보 추가
+                  const lessonProgress = allProgress?.find(p => p.lesson_id === l.id)
+                  const isCompleted = lessonProgress?.status === 'COMPLETED'
                   
                   return (
                     <Link

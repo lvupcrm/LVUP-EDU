@@ -7,32 +7,24 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-
-// Simple metrics storage (in production, use a proper metrics library like prom-client)
-const metrics = {
-  requests_total: 0,
-  requests_duration_ms: [] as number[],
-  active_users: 0,
-  courses_total: 0,
-  enrollments_total: 0,
-  revenue_total: 0
-}
+import { getMetrics, updateMetrics, getAverageResponseTime } from '@/lib/metrics'
 
 export async function GET(request: NextRequest) {
   try {
     // Update business metrics from database
     await updateBusinessMetrics()
 
+    // Get current metrics
+    const currentMetrics = getMetrics()
+    
     // Calculate average response time
-    const avgResponseTime = metrics.requests_duration_ms.length > 0
-      ? metrics.requests_duration_ms.reduce((a, b) => a + b, 0) / metrics.requests_duration_ms.length
-      : 0
+    const avgResponseTime = getAverageResponseTime()
 
     // Generate Prometheus format metrics
     const prometheusMetrics = `
 # HELP http_requests_total Total number of HTTP requests
 # TYPE http_requests_total counter
-http_requests_total ${metrics.requests_total}
+http_requests_total ${currentMetrics.requests_total}
 
 # HELP http_request_duration_ms Average HTTP request duration in milliseconds
 # TYPE http_request_duration_ms gauge
@@ -40,19 +32,19 @@ http_request_duration_ms ${avgResponseTime.toFixed(2)}
 
 # HELP active_users_total Number of active users
 # TYPE active_users_total gauge
-active_users_total ${metrics.active_users}
+active_users_total ${currentMetrics.active_users}
 
 # HELP courses_total Total number of courses
 # TYPE courses_total gauge
-courses_total ${metrics.courses_total}
+courses_total ${currentMetrics.courses_total}
 
 # HELP enrollments_total Total number of enrollments
 # TYPE enrollments_total gauge
-enrollments_total ${metrics.enrollments_total}
+enrollments_total ${currentMetrics.enrollments_total}
 
 # HELP revenue_total Total revenue in KRW
 # TYPE revenue_total gauge
-revenue_total ${metrics.revenue_total}
+revenue_total ${currentMetrics.revenue_total}
 
 # HELP nodejs_memory_usage_bytes Node.js memory usage
 # TYPE nodejs_memory_usage_bytes gauge
@@ -92,14 +84,10 @@ async function updateBusinessMetrics() {
       .from('courses')
       .select('*', { count: 'exact', head: true })
 
-    metrics.courses_total = coursesCount || 0
-
     // Get total enrollments count
     const { count: enrollmentsCount } = await supabase
       .from('enrollments')
       .select('*', { count: 'exact', head: true })
-
-    metrics.enrollments_total = enrollmentsCount || 0
 
     // Get active users (logged in within last 24 hours)
     const yesterday = new Date()
@@ -110,28 +98,23 @@ async function updateBusinessMetrics() {
       .select('*', { count: 'exact', head: true })
       .gte('last_sign_in_at', yesterday.toISOString())
 
-    metrics.active_users = activeUsersCount || 0
-
     // Get total revenue from completed orders
     const { data: orders } = await supabase
       .from('orders')
       .select('amount')
       .eq('status', 'COMPLETED')
 
-    metrics.revenue_total = orders?.reduce((sum, order) => sum + order.amount, 0) || 0
+    const revenue = orders?.reduce((sum, order) => sum + order.amount, 0) || 0
+
+    // Update metrics using the utility function
+    updateMetrics({
+      courses_total: coursesCount || 0,
+      enrollments_total: enrollmentsCount || 0,
+      active_users: activeUsersCount || 0,
+      revenue_total: revenue
+    })
 
   } catch (error) {
     console.error('Failed to update business metrics:', error)
-  }
-}
-
-// Middleware to track request metrics
-export function trackRequest(duration: number) {
-  metrics.requests_total++
-  metrics.requests_duration_ms.push(duration)
-  
-  // Keep only last 1000 requests for average calculation
-  if (metrics.requests_duration_ms.length > 1000) {
-    metrics.requests_duration_ms = metrics.requests_duration_ms.slice(-1000)
   }
 }

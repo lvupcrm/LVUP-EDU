@@ -34,7 +34,7 @@ const getEmailConfig = (): EmailConfig => {
 // 트랜스포터 생성
 const createTransporter = () => {
   const config = getEmailConfig()
-  return nodemailer.createTransporter(config)
+  return nodemailer.createTransport(config)
 }
 
 // 이메일 전송 함수

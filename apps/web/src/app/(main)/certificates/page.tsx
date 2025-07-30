@@ -1,25 +1,19 @@
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClientSafe, fetchUserCertificates } from '@/lib/supabase-helpers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { AcademicCapIcon, ArrowDownTrayIcon as DocumentDownloadIcon } from '@heroicons/react/24/outline'
 
 export default async function CertificatesPage() {
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    redirect('/auth/login')
-  }
+  try {
+    const supabase = getSupabaseClientSafe()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      redirect('/auth/login')
+    }
 
-  // 사용자의 수료증 목록 가져오기
-  const { data: certificates } = await supabase
-    .from('certificates')
-    .select(`
-      *,
-      course:courses(id, title, thumbnail),
-      enrollment:enrollments(progress, completed_at)
-    `)
-    .eq('user_id', user.id)
-    .order('issued_at', { ascending: false })
+    // 사용자의 수료증 목록 가져오기
+    const certificates = await fetchUserCertificates(user.id)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,7 +30,7 @@ export default async function CertificatesPage() {
           {/* 수료증 목록 */}
           {certificates && certificates.length > 0 ? (
             <div className="grid gap-6">
-              {certificates.map((certificate) => (
+              {certificates.map((certificate: any) => (
                 <div
                   key={certificate.id}
                   className="bg-white rounded-xl shadow-soft overflow-hidden"
@@ -45,10 +39,10 @@ export default async function CertificatesPage() {
                     <div className="flex items-start gap-6">
                       {/* 코스 썸네일 */}
                       <div className="flex-shrink-0">
-                        {certificate.course.thumbnail ? (
+                        {certificate.course?.thumbnail ? (
                           <img
                             src={certificate.course.thumbnail}
-                            alt={certificate.course.title}
+                            alt={certificate.course?.title || '코스'}
                             className="w-32 h-24 object-cover rounded-lg"
                           />
                         ) : (
@@ -61,16 +55,16 @@ export default async function CertificatesPage() {
                       {/* 수료증 정보 */}
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-gray-900 mb-2">
-                          {certificate.course.title}
+                          {certificate.course?.title || '알 수 없는 코스'}
                         </h3>
                         
                         <div className="space-y-1 text-sm text-gray-600">
-                          <p>수료증 번호: <span className="font-medium text-gray-900">{certificate.certificate_number}</span></p>
-                          <p>발급일: {new Date(certificate.issued_at).toLocaleDateString('ko-KR')}</p>
-                          {certificate.enrollment.completed_at && (
+                          <p>수료증 번호: <span className="font-medium text-gray-900">{certificate.certificate_number || 'N/A'}</span></p>
+                          <p>발급일: {certificate.issued_at ? new Date(certificate.issued_at).toLocaleDateString('ko-KR') : 'N/A'}</p>
+                          {certificate.enrollment?.completed_at && (
                             <p>수료일: {new Date(certificate.enrollment.completed_at).toLocaleDateString('ko-KR')}</p>
                           )}
-                          <p>진도율: {certificate.enrollment.progress}%</p>
+                          <p>진도율: {certificate.enrollment?.progress || 0}%</p>
                         </div>
 
                         <div className="flex gap-3 mt-4">
@@ -116,4 +110,22 @@ export default async function CertificatesPage() {
       </div>
     </div>
   )
+  } catch (error) {
+    console.error('Error loading certificates page:', error)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            오류가 발생했습니다
+          </h1>
+          <p className="text-gray-600 mb-6">
+            수료증을 불러오는 중 문제가 발생했습니다.
+          </p>
+          <Link href="/" className="btn-primary">
+            홈으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    )
+  }
 }

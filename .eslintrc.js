@@ -1,4 +1,3 @@
-// ESLint configuration disabled for build compatibility
 module.exports = {
   root: true,
   env: {
@@ -6,9 +5,21 @@ module.exports = {
     es2022: true,
     node: true,
   },
-  extends: [],
-  rules: {},
+  extends: [
+    'eslint:recommended',
+    '@typescript-eslint/recommended',
+  ],
+  parser: '@typescript-eslint/parser',
+  plugins: ['@typescript-eslint'],
+  rules: {
+    '@typescript-eslint/no-unused-vars': 'warn',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-non-null-assertion': 'warn',
+  },
   ignorePatterns: [
-    '**/*', // Ignore all files for now
+    'node_modules/',
+    'dist/',
+    '.next/',
+    '*.js',
   ],
 };

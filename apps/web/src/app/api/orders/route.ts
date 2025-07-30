@@ -1,19 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   try {
+    // 서버사이드 Supabase 클라이언트 생성
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookies().get(name)?.value
+          },
+        },
+      }
+    )
+
+    // 인증된 사용자 확인
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const requestedUserId = searchParams.get('userId')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    if (!userId) {
+    // 요청된 userId가 현재 인증된 사용자와 일치하는지 확인
+    if (requestedUserId && requestedUserId !== user.id) {
       return NextResponse.json(
-        { error: '사용자 ID가 필요합니다.' },
-        { status: 400 }
+        { error: '다른 사용자의 주문 정보에는 접근할 수 없습니다.' },
+        { status: 403 }
       )
     }
+
+    // 현재 인증된 사용자의 ID 사용
+    const userId = user.id
 
     // 주문 목록 조회 (강의 정보 포함)
     const { data: orders, error } = await supabase

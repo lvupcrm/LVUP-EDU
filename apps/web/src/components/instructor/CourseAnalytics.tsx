@@ -78,11 +78,33 @@ export default function CourseAnalytics({ courseId }: CourseAnalyticsProps) {
         const completed = enrollments.filter(e => e.status === 'COMPLETED').length
         const avgProgress = enrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / enrollments.length
 
+        // 시청시간 계산을 위한 lesson_progress 데이터 가져오기
+        let totalWatchHours = 0
+        try {
+          const { data: progressData } = await supabase
+            .from('lesson_progress')
+            .select(`
+              watch_time,
+              enrollment:enrollments!inner(course_id)
+            `)
+            .eq('enrollment.course_id', courseId)
+
+          if (progressData) {
+            // 모든 watch_time을 초 단위로 합산하고 시간으로 변환
+            const totalWatchSeconds = progressData.reduce((total, progress) => {
+              return total + (progress.watch_time || 0)
+            }, 0)
+            totalWatchHours = Math.round((totalWatchSeconds / 3600) * 10) / 10 // 소수점 1자리까지
+          }
+        } catch (progressError) {
+          console.error('Error calculating watch time:', progressError)
+        }
+
         setAnalytics({
           totalStudents: enrollments.length,
           completedStudents: completed,
           averageProgress: avgProgress || 0,
-          totalWatchHours: 0, // TODO: Calculate from lesson_progress
+          totalWatchHours,
           averageRating: course?.average_rating || 0,
           reviewCount: course?.review_count || 0,
           recentEnrollments: enrollments.slice(0, 5),

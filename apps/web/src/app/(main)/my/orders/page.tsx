@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase'
 import { formatPrice } from '@/lib/toss-payments'
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/solid'
 
@@ -26,20 +27,44 @@ export default function OrderHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // TODO: 실제로는 인증된 사용자 ID를 가져와야 함
-  const userId = 'user-id-placeholder'
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    fetchOrders()
+    checkAuthAndFetchOrders()
   }, [])
+
+  const checkAuthAndFetchOrders = async () => {
+    try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error('Supabase 클라이언트를 초기화할 수 없습니다.')
+      }
+
+      // 인증된 사용자 확인
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !currentUser) {
+        // 인증되지 않은 경우 로그인 페이지로 리다이렉트
+        router.push('/auth/login?redirectTo=/my/orders')
+        return
+      }
+
+      setUser(currentUser)
+      await fetchOrders()
+    } catch (error: any) {
+      console.error('Authentication check failed:', error)
+      setError(error.message)
+      setIsLoading(false)
+    }
+  }
 
   const fetchOrders = async () => {
     try {
       setIsLoading(true)
       setError(null)
 
-      const response = await fetch(`/api/orders?userId=${userId}`)
+      // userId는 서버에서 인증된 사용자로부터 가져옴
+      const response = await fetch('/api/orders')
       const data = await response.json()
 
       if (!response.ok) {

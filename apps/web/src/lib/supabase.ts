@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateClientEnv } from './env-validation';
 
-let supabaseInstance: ReturnType<typeof createClient> | null = null;
+let supabaseInstance: SupabaseClient | null = null;
 let initializationError: Error | null = null;
 let isInitialized = false;
 
@@ -76,7 +76,7 @@ export const supabase = getSupabaseClient();
 
 // 안전한 Supabase 작업을 위한 헬퍼 함수
 export async function safeSupabaseOperation<T>(
-  operation: (client: ReturnType<typeof createClient>) => Promise<T>,
+  operation: (client: SupabaseClient) => Promise<T>,
   fallback?: T
 ): Promise<T | null> {
   const client = getSupabaseClient();

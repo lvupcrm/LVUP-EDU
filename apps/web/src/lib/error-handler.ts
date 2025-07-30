@@ -6,6 +6,7 @@
  * - Recovery strategies
  */
 
+import React from 'react'
 import { logger } from './logger'
 
 export enum ErrorType {
@@ -30,6 +31,7 @@ export interface AppError {
   context?: Record<string, any>
   recoverable?: boolean
   retryable?: boolean
+  stack?: string
 }
 
 export class CustomError extends Error implements AppError {

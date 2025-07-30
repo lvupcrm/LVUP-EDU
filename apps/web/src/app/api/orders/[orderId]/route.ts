@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 interface RouteParams {
   params: {
@@ -9,6 +11,29 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    // 서버사이드 Supabase 클라이언트 생성
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookies().get(name)?.value
+          },
+        },
+      }
+    )
+
+    // 인증된 사용자 확인
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
     const { orderId } = params
 
     if (!orderId) {
@@ -18,13 +43,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 주문 상세 정보 조회 (강의, 결제 정보 포함)
+    // 주문 상세 정보 조회 (사용자 ID와 함께 조회하여 권한 확인)
     const { data: order, error } = await supabase
       .from('orders')
       .select(`
         id,
         order_number,
         order_id,
+        user_id,
         amount,
         original_amount,
         discount_amount,
@@ -54,6 +80,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         )
       `)
       .eq('id', orderId)
+      .eq('user_id', user.id) // 현재 인증된 사용자의 주문만 조회
       .single()
 
     if (error) {
@@ -70,9 +97,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // user_id 제거 후 응답
+    const { user_id, ...orderWithoutUserId } = order
+    
     return NextResponse.json({
       success: true,
-      order,
+      order: orderWithoutUserId,
     })
 
   } catch (error) {
