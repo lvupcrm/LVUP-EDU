@@ -1,5 +1,8 @@
-import { supabase } from '@/lib/supabase';
-import { redirect } from 'next/navigation';
+'use client'
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getSupabaseClient } from '@/lib/supabase';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -14,100 +17,176 @@ import {
   StarIcon,
 } from '@heroicons/react/24/outline';
 
-export default async function MyCourses() {
-  // 현재 사용자 확인
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function MyCourses() {
+  const [user, setUser] = useState<any>(null);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const router = useRouter();
+  const supabase = getSupabaseClient();
 
-  if (!user) {
-    redirect('/auth/login');
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!supabase) {
+        router.push('/auth/login?redirectTo=/my/courses');
+        return;
+      }
+
+      try {
+        // 현재 사용자 확인
+        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !currentUser) {
+          router.push('/auth/login?redirectTo=/my/courses');
+          return;
+        }
+
+        setUser(currentUser);
+
+        // 사용자의 수강 내역 가져오기
+        const { data: enrollmentData, error: enrollmentError } = await supabase
+          .from('enrollments')
+          .select(`
+            id,
+            enrolled_at,
+            status,
+            course:courses(
+              id,
+              title,
+              description,
+              thumbnail,
+              price,
+              total_duration,
+              difficulty_level,
+              instructor:instructor_profiles(
+                user:users(name, avatar)
+              )
+            )
+          `)
+          .eq('user_id', currentUser.id)
+          .order('enrolled_at', { ascending: false });
+
+        if (enrollmentError) {
+          throw enrollmentError;
+        }
+
+        const rawEnrollments = enrollmentData || [];
+
+        // 각 강의별 진도 정보 가져오기
+        const enrollmentsWithProgress = await Promise.all(
+          rawEnrollments.map(async enrollment => {
+            // 전체 레슨 수
+            const { count: totalLessons } = await supabase
+              .from('lessons')
+              .select('*', { count: 'exact', head: true })
+              .eq('course_id', enrollment.course.id);
+
+            // 완료한 레슨 수와 진도 정보
+            const { count: completedLessons } = await supabase
+              .from('lesson_progress')
+              .select('*', { count: 'exact', head: true })
+              .eq('enrollment_id', enrollment.id)
+              .eq('status', 'COMPLETED');
+
+            // 마지막 학습 진도
+            const { data: lastProgress } = await supabase
+              .from('lesson_progress')
+              .select('*')
+              .eq('enrollment_id', enrollment.id)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            // 진도율 계산
+            const progressPercentage = totalLessons
+              ? Math.round(((completedLessons || 0) / totalLessons) * 100)
+              : 0;
+
+            // 수료증 발급 가능 여부 (90% 이상 완료)
+            const canGetCertificate = progressPercentage >= 90;
+
+            return {
+              ...enrollment,
+              totalLessons: totalLessons || 0,
+              completedLessons: completedLessons || 0,
+              progressPercentage,
+              lastProgress,
+              canGetCertificate,
+            };
+          })
+        );
+
+        setEnrollments(enrollmentsWithProgress);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('데이터를 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [supabase, router]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-300 rounded mb-6 w-48"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-64 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // 사용자의 수강 내역 가져오기
-  const { data: enrollments } = await supabase
-    .from('enrollments')
-    .select(
-      `
-      id,
-      enrolled_at,
-      status,
-      course:courses(
-        id,
-        title,
-        description,
-        thumbnail,
-        price,
-        total_duration,
-        difficulty_level,
-        instructor:instructor_profiles(
-          user:users(name, avatar)
-        )
-      )
-    `
-    )
-    .eq('user_id', user.id)
-    .order('enrolled_at', { ascending: false });
-
-  // 각 강의별 진도 정보 가져오기
-  const enrollmentsWithProgress = await Promise.all(
-    (enrollments || []).map(async enrollment => {
-      // 전체 레슨 수
-      const { count: totalLessons } = await supabase
-        .from('lessons')
-        .select('*', { count: 'exact', head: true })
-        .eq('course_id', enrollment.course.id);
-
-      // 완료한 레슨 수와 진도 정보
-      const { count: completedLessons } = await supabase
-        .from('lesson_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('enrollment_id', enrollment.id)
-        .eq('status', 'COMPLETED');
-
-      // 마지막 학습 진도
-      const { data: lastProgress } = await supabase
-        .from('lesson_progress')
-        .select('*')
-        .eq('enrollment_id', enrollment.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      // 진도율 계산
-      const progressPercentage = totalLessons
-        ? Math.round(((completedLessons || 0) / totalLessons) * 100)
-        : 0;
-
-      // 수료증 발급 가능 여부 (90% 이상 완료)
-      const canGetCertificate = progressPercentage >= 90;
-
-      return {
-        ...enrollment,
-        totalLessons: totalLessons || 0,
-        completedLessons: completedLessons || 0,
-        progressPercentage,
-        lastProgress,
-        canGetCertificate,
-      };
-    })
-  );
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">오류가 발생했습니다</h1>
+            <p className="text-gray-600 mb-8">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-primary"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 상태별 분류
-  const ongoingCourses = enrollmentsWithProgress.filter(
+  const ongoingCourses = enrollments.filter(
     e => e.progressPercentage > 0 && e.progressPercentage < 100
   );
-  const completedCourses = enrollmentsWithProgress.filter(
+  const completedCourses = enrollments.filter(
     e => e.progressPercentage >= 100
   );
-  const notStartedCourses = enrollmentsWithProgress.filter(
+  const notStartedCourses = enrollments.filter(
     e => e.progressPercentage === 0
   );
 
   // 통계
-  const totalCourses = enrollmentsWithProgress.length;
+  const totalCourses = enrollments.length;
   const completedCount = completedCourses.length;
-  const totalStudyTime = enrollmentsWithProgress.reduce(
+  const totalStudyTime = enrollments.reduce(
     (acc, e) => acc + (e.course.total_duration || 0),
     0
   );
@@ -307,9 +386,9 @@ export default async function MyCourses() {
         </div>
 
         {/* 강의 목록 */}
-        {enrollmentsWithProgress.length > 0 ? (
+        {enrollments.length > 0 ? (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {enrollmentsWithProgress.map(enrollment => (
+            {enrollments.map(enrollment => (
               <CourseCard key={enrollment.id} enrollment={enrollment} />
             ))}
           </div>
@@ -329,7 +408,7 @@ export default async function MyCourses() {
         )}
 
         {/* 추천 섹션 */}
-        {enrollmentsWithProgress.length > 0 && (
+        {enrollments.length > 0 && (
           <div className='mt-12 bg-gradient-to-r from-primary-50 to-fitness-50 rounded-xl p-8'>
             <div className='text-center'>
               <h2 className='text-2xl font-bold text-gray-900 mb-4'>
