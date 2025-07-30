@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { KakaoLoginButton } from '@/components/auth/KakaoLoginButton';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -119,46 +120,6 @@ export default function LoginPage() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
-  };
-
-  const handleKakaoLogin = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { getSupabaseClient, isSupabaseReady } = await import(
-        '@/lib/supabase'
-      );
-
-      if (!isSupabaseReady()) {
-        setError('인증 서비스 연결 실패');
-        return;
-      }
-
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setError('인증 서비스를 초기화할 수 없습니다.');
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'kakao',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        console.error('Kakao login error:', error);
-        setError('카카오 로그인 중 오류가 발생했습니다.');
-      }
-      // 성공 시 자동으로 카카오 로그인 페이지로 리다이렉트됩니다
-    } catch (err) {
-      console.error('Kakao login error:', err);
-      setError('카카오 로그인 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -286,25 +247,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button
-            type='button'
-            onClick={handleKakaoLogin}
-            disabled={loading}
-            className='w-full bg-[#FEE500] text-black py-3 px-4 rounded-lg hover:bg-[#FDD835] font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2'
-          >
-            <svg
-              className='w-5 h-5'
-              viewBox='0 0 24 24'
-              fill='none'
-              xmlns='http://www.w3.org/2000/svg'
-            >
-              <path
-                d='M12 3C6.48 3 2 6.48 2 11.04C2 14.04 3.84 16.64 6.5 17.86V21.96L10.44 18.24C10.96 18.32 11.48 18.36 12 18.36C17.52 18.36 22 14.88 22 11.04C22 6.48 17.52 3 12 3Z'
-                fill='currentColor'
-              />
-            </svg>
-            <span>카카오로 로그인</span>
-          </button>
+          <KakaoLoginButton variant='login' redirectTo='/' />
 
           <div className='text-center'>
             <span className='text-sm text-gray-600'>

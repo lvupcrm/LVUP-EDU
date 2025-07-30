@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { KakaoLoginButton } from '@/components/auth/KakaoLoginButton';
 // Supabase는 동적 import로 사용하여 hydration 문제 방지
 
 const userTypes = [
@@ -39,46 +40,6 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const handleKakaoSignUp = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { getSupabaseClient, isSupabaseReady } = await import(
-        '@/lib/supabase'
-      );
-
-      if (!isSupabaseReady()) {
-        setError('인증 서비스 연결 실패');
-        return;
-      }
-
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setError('인증 서비스를 초기화할 수 없습니다.');
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'kakao',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/auth/complete-profile`,
-        },
-      });
-
-      if (error) {
-        console.error('Kakao signup error:', error);
-        setError('카카오 회원가입 중 오류가 발생했습니다.');
-      }
-      // 성공 시 자동으로 카카오 로그인 페이지로 리다이렉트됩니다
-    } catch (err) {
-      console.error('Kakao signup error:', err);
-      setError('카카오 회원가입 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,25 +297,10 @@ export default function SignUpPage() {
         </div>
 
         {/* 카카오로 시작하기 버튼 */}
-        <button
-          type='button'
-          onClick={handleKakaoSignUp}
-          disabled={loading}
-          className='w-full bg-[#FEE500] text-black py-3 px-4 rounded-lg hover:bg-[#FDD835] font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2'
-        >
-          <svg
-            className='w-5 h-5'
-            viewBox='0 0 24 24'
-            fill='none'
-            xmlns='http://www.w3.org/2000/svg'
-          >
-            <path
-              d='M12 3C6.48 3 2 6.48 2 11.04C2 14.04 3.84 16.64 6.5 17.86V21.96L10.44 18.24C10.96 18.32 11.48 18.36 12 18.36C17.52 18.36 22 14.88 22 11.04C22 6.48 17.52 3 12 3Z'
-              fill='currentColor'
-            />
-          </svg>
-          <span>카카오로 시작하기</span>
-        </button>
+        <KakaoLoginButton
+          variant='signup'
+          redirectTo='/auth/complete-profile'
+        />
 
         <div className='relative'>
           <div className='absolute inset-0 flex items-center'>

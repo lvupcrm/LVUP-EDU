@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Toaster } from '@/components/ui/toaster';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -116,6 +117,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
       {children}
+      <Toaster />
     </ErrorBoundary>
   );
 }
