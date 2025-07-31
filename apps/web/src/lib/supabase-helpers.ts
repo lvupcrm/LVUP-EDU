@@ -13,7 +13,8 @@ import { getSupabaseClient, safeSupabaseOperation } from './supabase'
 export function getSupabaseClientSafe() {
   const client = getSupabaseClient()
   if (!client) {
-    throw new Error('Supabase client is not initialized')
+    console.error('Critical error: Supabase client is not initialized')
+    throw new Error('인증 서비스를 초기화할 수 없습니다. 잠시 후 다시 시도해주세요.')
   }
   return client
 }
@@ -71,8 +72,8 @@ export async function fetchUserCertificates(userId: string) {
       .order('issued_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching certificates:', error)
-      throw error
+      console.error('Certificate fetch error:', error.message || error)
+      throw new Error('수료증 데이터를 불러오는데 실패했습니다.')
     }
 
     return data || []
@@ -107,8 +108,8 @@ export async function fetchCertificateById(id: string) {
       .single()
 
     if (error) {
-      console.error('Error fetching certificate:', error)
-      throw error
+      console.error('Single certificate fetch error:', error.message || error)
+      throw new Error('수료증 정보를 불러오는데 실패했습니다.')
     }
 
     return data
@@ -130,8 +131,8 @@ export async function fetchLessonWithProgress(
       .single()
 
     if (lessonError) {
-      console.error('Error fetching lesson:', lessonError)
-      throw lessonError
+      console.error('Lesson fetch error:', lessonError.message || lessonError)
+      throw new Error('레슨 정보를 불러오는데 실패했습니다.')
     }
 
     const { data: progress, error: progressError } = await client
@@ -187,8 +188,8 @@ export async function updateLessonProgress(
       .single()
 
     if (error) {
-      console.error('Error updating lesson progress:', error)
-      throw error
+      console.error('Progress update error:', error.message || error)
+      throw new Error('학습 진도를 업데이트하는데 실패했습니다.')
     }
 
     // If lesson is newly completed (wasn't completed before but is now)

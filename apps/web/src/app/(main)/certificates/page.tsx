@@ -5,11 +5,25 @@ import Link from 'next/link';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { getSupabaseClient } from '@/lib/supabase';
 
+// Types
+interface Certificate {
+  id: string;
+  certificate_number?: string;
+  issued_at?: string;
+  course_id?: string;
+}
+
+interface User {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
 export default function CertificatesPage() {
-  const [user, setUser] = useState(null);
-  const [certificates, setCertificates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     async function loadCertificates() {
