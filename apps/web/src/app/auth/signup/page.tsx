@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { KakaoLoginButton } from '@/components/auth/KakaoLoginButton';
+import { logger } from '@/lib/logger';
 // Supabase는 동적 import로 사용하여 hydration 문제 방지
 
 const userTypes = [
@@ -70,13 +71,13 @@ export default function SignUpPage() {
 
       // 비밀번호 복잡성 검증 (선택적)
       if (formData.password.length < 8) {
-        console.warn('Password is shorter than recommended 8 characters');
+        logger.warn('Password validation: shorter than recommended length');
       }
 
-      console.log('Step 1 validation passed:', {
-        email: formData.email,
+      logger.debug('Step 1 validation passed', {
+        hasEmail: !!formData.email,
         passwordLength: formData.password.length,
-        name: formData.name,
+        hasName: !!formData.name
       });
 
       setError('');
@@ -106,22 +107,22 @@ export default function SignUpPage() {
 
         if (!isSupabaseReady()) {
           const supabaseError = getSupabaseError();
-          console.error('Supabase not ready:', supabaseError);
+          logger.error('Supabase initialization failed', supabaseError);
           setError(
             `인증 서비스 연결 실패: ${supabaseError?.message || '알 수 없는 오류'}`
           );
           return;
         }
 
-        console.log('Starting signup process for:', formData.email);
+        logger.info('Starting signup process');
 
         // 1. 안전한 Supabase Auth 회원가입
         const signUpResult = await safeSupabaseOperation(async client => {
-          console.log('Calling signUp with:', {
-            email: formData.email,
+          logger.debug('Calling signUp with user data', {
+            hasEmail: !!formData.email,
             passwordLength: formData.password.length,
-            name: formData.name,
-            userType: formData.userType,
+            hasName: !!formData.name,
+            userType: formData.userType
           });
 
           const { data: authData, error: authError } = await client.auth.signUp(
