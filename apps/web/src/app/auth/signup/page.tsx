@@ -395,7 +395,7 @@ export default function SignUpPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className='input mt-1'
+                  className='input mt-1 bg-white text-gray-900 placeholder:text-gray-500'
                   placeholder='example@lvupedu.com'
                 />
               </div>
@@ -415,7 +415,7 @@ export default function SignUpPage() {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className='input mt-1'
+                  className='input mt-1 bg-white text-gray-900 placeholder:text-gray-500'
                   placeholder='홍길동'
                 />
               </div>
@@ -436,7 +436,7 @@ export default function SignUpPage() {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className='input pr-10'
+                    className='input pr-10 bg-white text-gray-900 placeholder:text-gray-500'
                     placeholder='최소 6자 이상'
                   />
                   <button
@@ -469,7 +469,7 @@ export default function SignUpPage() {
                     required
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className='input pr-10'
+                    className='input pr-10 bg-white text-gray-900 placeholder:text-gray-500'
                     placeholder='비밀번호를 다시 입력하세요'
                   />
                   <button
@@ -551,7 +551,7 @@ export default function SignUpPage() {
                     type='text'
                     value={formData.nickname}
                     onChange={handleChange}
-                    className='input mt-1'
+                    className='input mt-1 bg-white text-gray-900 placeholder:text-gray-500'
                     placeholder='선택사항'
                   />
                 </div>
@@ -569,7 +569,7 @@ export default function SignUpPage() {
                     type='tel'
                     value={formData.phone}
                     onChange={handleChange}
-                    className='input mt-1'
+                    className='input mt-1 bg-white text-gray-900 placeholder:text-gray-500'
                     placeholder='010-1234-5678'
                   />
                 </div>
