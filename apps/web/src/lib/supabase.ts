@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateClientEnv } from './env-validation';
+import { logger } from './logger';
 
 let supabaseInstance: SupabaseClient | null = null;
 let initializationError: Error | null = null;
@@ -45,7 +46,7 @@ function createSafeSupabaseClient() {
       error instanceof Error
         ? error
         : new Error('Unknown initialization error');
-    console.error('Supabase client initialization failed:', error);
+    logger.error('Supabase client initialization failed', error);
 
     // NULL을 반환하여 명시적으로 실패를 나타냄
     return null;
@@ -89,7 +90,7 @@ export async function safeSupabaseOperation<T>(
   try {
     return await operation(client);
   } catch (error) {
-    console.error('Supabase operation failed:', error);
+    logger.error('Supabase database operation failed', error);
     return fallback || null;
   }
 }

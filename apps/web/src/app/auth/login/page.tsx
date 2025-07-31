@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { KakaoLoginButton } from '@/components/auth/KakaoLoginButton';
+import { logger } from '@/lib/logger';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      console.log('Starting login process...');
+      logger.info('Starting login process');
 
       // Supabase import
       const { getSupabaseClient } = await import('@/lib/supabase');
@@ -30,12 +31,12 @@ export default function LoginPage() {
       const supabase = getSupabaseClient();
       
       if (!supabase) {
-        console.error('Supabase client not initialized');
+        logger.error('Supabase client not initialized');
         setError('인증 서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
 
-      console.log('Attempting login with email:', formData.email);
+      logger.debug('Attempting login with email', { email: formData.email });
 
       // 로그인 시도
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -43,14 +44,14 @@ export default function LoginPage() {
         password: formData.password,
       });
 
-      console.log('Login response:', {
+      logger.debug('Login response received', {
         hasUser: !!data?.user,
         hasSession: !!data?.session,
-        error: signInError?.message,
+        hasError: !!signInError
       });
 
       if (signInError) {
-        console.error('Login error:', signInError);
+        logger.error('Login authentication failed', signInError);
         if (signInError.message === 'Invalid login credentials') {
           setError('이메일 또는 비밀번호가 올바르지 않습니다.');
         } else if (signInError.message.includes('Email not confirmed')) {
@@ -62,7 +63,7 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        console.log('Login successful, checking user profile...');
+        logger.info('Login successful, checking user profile');
         
         // 로그인 성공 후 프로필 존재 여부 확인
         try {
@@ -74,7 +75,7 @@ export default function LoginPage() {
 
           if (profileError && profileError.code === 'PGRST116') {
             // 프로필이 없는 경우 자동 생성
-            console.log('User profile not found, creating one...');
+            logger.info('User profile not found, creating one');
             const { error: createError } = await supabase
               .from('users')
               .insert({
@@ -90,19 +91,19 @@ export default function LoginPage() {
               });
 
             if (createError) {
-              console.error('Failed to create user profile:', createError);
+              logger.error('Failed to create user profile', createError);
               // 프로필 생성 실패해도 로그인은 성공 처리
             } else {
-              console.log('User profile created successfully');
+              logger.info('User profile created successfully');
             }
           } else if (profileError) {
-            console.error('Profile check error:', profileError);
+            logger.error('Profile check error', profileError);
             // 프로필 확인 실패해도 로그인은 성공 처리
           } else {
-            console.log('User profile already exists');
+            logger.debug('User profile already exists');
           }
         } catch (profileErr) {
-          console.error('Profile handling error:', profileErr);
+          logger.error('Profile handling error', profileErr);
           // 프로필 관련 오류가 있어도 로그인은 성공 처리
         }
 
@@ -110,11 +111,11 @@ export default function LoginPage() {
         router.push('/');
         router.refresh();
       } else {
-        console.error('Login failed - no user returned');
+        logger.error('Login failed - no user returned');
         setError('로그인에 실패했습니다. 계정 정보를 확인해주세요.');
       }
     } catch (err) {
-      console.error('Login error:', err);
+      logger.error('Login process failed', err);
       setError(
         err instanceof Error ? err.message : '로그인 중 오류가 발생했습니다.'
       );

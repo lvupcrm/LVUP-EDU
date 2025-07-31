@@ -3,6 +3,8 @@
  * Provides secure validation without exposing sensitive values
  */
 
+import { logger } from './logger'
+
 interface EnvConfig {
   NEXT_PUBLIC_SUPABASE_URL: string
   NEXT_PUBLIC_SUPABASE_ANON_KEY: string
