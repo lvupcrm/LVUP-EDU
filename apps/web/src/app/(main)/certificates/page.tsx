@@ -1,19 +1,93 @@
-import { getSupabaseClientSafe, fetchUserCertificates } from '@/lib/supabase-helpers'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { AcademicCapIcon, ArrowDownTrayIcon as DocumentDownloadIcon } from '@heroicons/react/24/outline'
+'use client';
 
-export default async function CertificatesPage() {
-  try {
-    const supabase = getSupabaseClientSafe()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      redirect('/auth/login')
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { AcademicCapIcon } from '@heroicons/react/24/outline';
+import { getSupabaseClient } from '@/lib/supabase';
+
+export default function CertificatesPage() {
+  const [user, setUser] = useState(null);
+  const [certificates, setCertificates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadCertificates() {
+      try {
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+          setError('인증 서비스에 연결할 수 없습니다.');
+          setLoading(false);
+          return;
+        }
+
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (!currentUser) {
+          window.location.href = '/auth/login';
+          return;
+        }
+
+        setUser(currentUser);
+
+        // certificates 테이블이 존재한다면 가져오기 시도
+        try {
+          const { data: certificatesData, error: certificatesError } = await supabase
+            .from('certificates')
+            .select(`
+              id,
+              certificate_number,
+              issued_at,
+              course_id
+            `)
+            .eq('user_id', currentUser.id);
+
+          if (certificatesError) {
+            console.log('Certificates table not found or accessible:', certificatesError.message);
+            setCertificates([]);
+          } else {
+            setCertificates(certificatesData || []);
+          }
+        } catch (err) {
+          console.log('Error accessing certificates:', err);
+          setCertificates([]);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading certificates:', err);
+        setError('수료증을 불러오는 중 오류가 발생했습니다.');
+        setLoading(false);
+      }
     }
 
-    // 사용자의 수료증 목록 가져오기
-    const certificates = await fetchUserCertificates(user.id)
+    loadCertificates();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">수료증을 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">오류가 발생했습니다</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link href="/" className="btn-primary">
+            홈으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -30,41 +104,28 @@ export default async function CertificatesPage() {
           {/* 수료증 목록 */}
           {certificates && certificates.length > 0 ? (
             <div className="grid gap-6">
-              {certificates.map((certificate: any) => (
+              {certificates.map((certificate) => (
                 <div
                   key={certificate.id}
                   className="bg-white rounded-xl shadow-soft overflow-hidden"
                 >
                   <div className="p-6">
                     <div className="flex items-start gap-6">
-                      {/* 코스 썸네일 */}
+                      {/* 수료증 아이콘 */}
                       <div className="flex-shrink-0">
-                        {certificate.course?.thumbnail ? (
-                          <img
-                            src={certificate.course.thumbnail}
-                            alt={certificate.course?.title || '코스'}
-                            className="w-32 h-24 object-cover rounded-lg"
-                          />
-                        ) : (
-                          <div className="w-32 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <AcademicCapIcon className="h-12 w-12 text-gray-400" />
-                          </div>
-                        )}
+                        <div className="w-32 h-24 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center">
+                          <AcademicCapIcon className="h-12 w-12 text-primary-600" />
+                        </div>
                       </div>
 
                       {/* 수료증 정보 */}
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-gray-900 mb-2">
-                          {certificate.course?.title || '알 수 없는 코스'}
+                          수료증 #{certificate.certificate_number || certificate.id}
                         </h3>
                         
                         <div className="space-y-1 text-sm text-gray-600">
-                          <p>수료증 번호: <span className="font-medium text-gray-900">{certificate.certificate_number || 'N/A'}</span></p>
                           <p>발급일: {certificate.issued_at ? new Date(certificate.issued_at).toLocaleDateString('ko-KR') : 'N/A'}</p>
-                          {certificate.enrollment?.completed_at && (
-                            <p>수료일: {new Date(certificate.enrollment.completed_at).toLocaleDateString('ko-KR')}</p>
-                          )}
-                          <p>진도율: {certificate.enrollment?.progress || 0}%</p>
                         </div>
 
                         <div className="flex gap-3 mt-4">
@@ -74,17 +135,6 @@ export default async function CertificatesPage() {
                           >
                             수료증 보기
                           </Link>
-                          
-                          {certificate.pdf_url && (
-                            <a
-                              href={certificate.pdf_url}
-                              download
-                              className="btn-outline"
-                            >
-                              <DocumentDownloadIcon className="h-5 w-5 mr-2" />
-                              PDF 다운로드
-                            </a>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -109,23 +159,5 @@ export default async function CertificatesPage() {
         </div>
       </div>
     </div>
-  )
-  } catch (error) {
-    console.error('Error loading certificates page:', error)
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            오류가 발생했습니다
-          </h1>
-          <p className="text-gray-600 mb-6">
-            수료증을 불러오는 중 문제가 발생했습니다.
-          </p>
-          <Link href="/" className="btn-primary">
-            홈으로 돌아가기
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  );
 }
